@@ -1,0 +1,102 @@
+% Honeywell HGuide i200 IMU:
+%   Gyro noise density: 0.0002927 rad/s/√(Hz)
+%   Gyro bias stability: 10°/hr
+%   Accelerometer bias stability: 0.03mg
+
+%
+
+
+
+Honeywell HGuide i200 IMU:
+Gyro noise density: 0.03 deg/s/√Hz
+Gyro bias stability: 1.3°/hr
+Accelerometer bias stability: 60 µg
+Accelerometer noise density: 2.5 µg/√Hz
+Northrop Grumman LN-200 IMU:
+Gyro noise density: 0.006°/sec/√hr
+Gyro bias stability: 0.25°/hr
+Accelerometer bias stability: 200 µg
+KVH Industries DSP-3000 Fiber Optic Gyro:
+Gyro bias stability: 0.003°/hr
+Accelerometer bias stability: N/A
+
+Honeywell HGuide i200 IMU:
+Gyro noise density: 0.001°/sec/√Hz
+Gyro bias instability: 0.001°/hr
+Accelerometer noise density: 0.02 m/s²/√Hz
+Accelerometer bias instability: 2 mg
+Northrop Grumman LN-200 IMU:
+
+Gyro bias instability: 0.2°/hr
+Accelerometer noise density: 0.0005 g/√Hz
+Accelerometer bias instability: 100 µg
+KVH Industries DSP-3000 Fiber Optic Gyro:
+Gyro noise density: 0.00005°/sec/√Hz
+Gyro bias instability: 0.05°/hr
+Accelerometer noise density: N/A (this IMU does not include an accelerometer)
+Accelerometer bias instability: N/A
+
+Honeywell HGuide i200 IMU:
+Gyro bias stability: 1.3°/hr
+Accelerometer bias stability: 60 µg
+Northrop Grumman LN-200 IMU:
+Gyro bias stability: 0.25°/hr
+Accelerometer bias stability: 200 µg
+KVH Industries DSP-3000 Fiber Optic Gyro:
+Gyro bias stability: 0.003°/hr
+Accelerometer bias stability: N/A
+
+Honeywell HGuide i200 IMU:
+
+Gyro bias instability: 0.008°/hr
+Gyro bias stability: 0.008°/hr
+
+Accelerometer bias instability: 0.04 mg
+Northrop Grumman LN-200 IMU:
+Gyro noise density: 0.003 deg/s/√Hz
+Gyro bias instability: 0.005°/hr
+Gyro bias stability: 0.005°/hr
+Accelerometer noise density: 100 µg/√Hz
+Accelerometer bias instability: 1 mg
+KVH Industries DSP-3000 Fiber Optic Gyro:
+Gyro noise density: 0.0002 deg/s/√Hz
+Gyro bias instability: 0.003°/hr
+Gyro bias stability: 0.003°/hr
+Accelerometer noise density: N/A
+Accelerometer bias instability: N/A
+
+
+% % Define IMU model
+% fs = 100;  % Sampling frequency [Hz]
+% dt = 1/fs;  % Sampling interval [s]
+% gyro_sensitivity = 0.01;  % [rad/s/LSB]
+% acc_sensitivity = 0.1;  % [m/s^2/LSB]
+%
+% % Specify noise and bias parameters
+% gyro_noise_density = 0.001;  % [rad/s/sqrt(Hz)]
+% gyro_bias_stability = 0.01;  % [rad/s]
+% acc_noise_density = 0.01;  % [m/s^2/sqrt(Hz)]
+% acc_bias_stability = 0.1;  % [m/s^2]
+%
+% % Define noise and bias models
+% gyro_noise = sqrt(gyro_noise_density) * randn(1,length(t));
+% gyro_bias = gyro_bias_stability * randn(1,length(t));
+% acc_noise = sqrt(acc_noise_density) * randn(1,length(t));
+% acc_bias = acc_bias_stability * randn(1,length(t));
+%
+% % Simulate IMU measurements with noise and bias
+% t = 0:dt:10;  % Time vector
+% n = length(t);
+% u = sin(2*pi*0.1*t);  % Input signal
+% x = zeros(2,n);  % State vector
+% y = zeros(2,n);  % Measurement vector
+% for k = 2:n
+%     % Integrate state equations
+%     x(:,k) = x(:,k-1) + dt * [x(2,k-1); -u(k-1)];
+%
+%     % Simulate gyro measurement with noise and bias
+%     y(1,k) = gyro_sensitivity * x(2,k) + gyro_bias(k) + gyro_noise(k);
+%
+%     % Simulate accelerometer measurement with noise and bias
+%     y(2,k) = acc_sensitivity * (-x(1,k)) + acc_bias(k) + acc_noise(k);
+% end
