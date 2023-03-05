@@ -8,43 +8,18 @@
         "type": "tabs",
         "children": [
           {
-            "id": "19821c25afc3e695",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Literature Review Scratch.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "26366782659197fd",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Reference Notes/Trajectory Control for a Low-Lift Re-Entry Vehicle.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
             "id": "f0d9494b94f2aa84",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
+                "file": "Reference Notes/Reference List.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -110,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
+                "file": "Reference Notes/Reference List.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -127,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
+                "file": "Reference Notes/Reference List.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -150,7 +125,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Reference Notes/Entry Guidance - A Unified Method.md"
+                "file": "Reference Notes/Reference List.md"
               }
             }
           }
@@ -173,10 +148,10 @@
   },
   "active": "f0d9494b94f2aa84",
   "lastOpenFiles": [
-    "Reference Notes/Reference List.md",
-    "Reference Notes/Trajectory Control for a Low-Lift Re-Entry Vehicle.md",
-    "Literature Review Scratch.md",
     "Reference Notes/Entry Guidance - A Unified Method.md",
+    "Reference Notes/Reference List.md",
+    "Literature Review Scratch.md",
+    "Reference Notes/Trajectory Control for a Low-Lift Re-Entry Vehicle.md",
     "Reference Notes"
   ]
 }
