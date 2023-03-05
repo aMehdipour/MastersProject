@@ -1,0 +1,4 @@
+- Talk about old guidance methods, space shuttle, etc
+- Talk about guidance methods for low L/D vehicles
+- Talk about the possibility of skip reentry
+- 

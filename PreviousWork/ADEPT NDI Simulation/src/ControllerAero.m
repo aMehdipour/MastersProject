@@ -18,10 +18,10 @@ function [v_aero,B,bias,f_aero,Ffit] = ControllerAero(V,rho,aoa,ss,bank,fd,CFD)
 % B         Control effectiveness matrix, a 5x8 matrix containing the
 %           slopes of the moment data with respect to flap deflection angles
 % bias      The flap aerodynamic data is approximated using a linear
-%           regression model. The slope of the linear regression is used to 
-%           construct the B matrix, and the bias is subtracted from 
+%           regression model. The slope of the linear regression is used to
+%           construct the B matrix, and the bias is subtracted from
 %           the final moment command to correct for the offset.
-% Ffit      Linear fit (bias and slope) of vehicle forces with respect to 
+% Ffit      Linear fit (bias and slope) of vehicle forces with respect to
 %            changes in angle of attack and sideslip angle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -32,7 +32,7 @@ R = 0.69; % reference length for moment calculation (m)
 Rf = 0.84;
 
 %% Compute vehicle moments
-ss = ss*180/pi; aoa = aoa*180/pi; % convert angles to degrees 
+ss = ss*180/pi; aoa = aoa*180/pi; % convert angles to degrees
 avec = CFD.aoa(:,1); % vector of angle of attack datapoints
 svec = CFD.ss(1,:); % vector of sideslip angle datapoints
 F_const = (1/2)*rho*A_A*V^2; % scaling factor for forces (N)
@@ -63,7 +63,7 @@ Clfit = polyfit(-20:10:20, CL_A,1);
 Csfit = polyfit(-20:10:20, CS_A,1);
 Ffit = F_const*[Clfit(2) Csfit(2) Clfit(1) Csfit(1)]; % [bias slope]
 
-%% Compute flap lift and drag forces 
+%% Compute flap lift and drag forces
 F_const = (1/2)*rho*A_f*V^2;
 M_const = (1/2)*rho*A_f*Rf*V^2; % scaling factor for moments (Nm)
 
@@ -71,18 +71,18 @@ M_const = (1/2)*rho*A_f*Rf*V^2; % scaling factor for moments (Nm)
 L_F = zeros(1,8); S_F=L_F;
 
 for i = 1:8
-    
+
     if abs(fd(i)) > 20
         fd(i) = 20*sign(fd(i));
     end
-    
+
     % set up grid points for data entries
     if i == 1
     X = CFD.ss3d; Y = CFD.aoa3d; Z = CFD.deflect3d;
     end
-    
+
     ind = ['CFD.F' num2str(i) '.']; % flap indicator
-    L_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Clline']),ss,aoa,fd(i)); 
+    L_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Clline']),ss,aoa,fd(i));
     S_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Csline']),ss,aoa,fd(i));
 end
 
@@ -100,12 +100,12 @@ for i = 1:8
     CmLslope = M_const*interp2(avec, svec,  eval([ind,'CmLslope']),ss,aoa);
     CmMslope = M_const*interp2(avec, svec,  eval([ind,'CmMslope']),ss,aoa);
     CmNslope = M_const*interp2(avec, svec,  eval([ind,'CmNslope']),ss,aoa);
-    
+
     B(:,i) = roll*[CmLslope; CmMslope; CmNslope];
-    
+
     CmLbias = M_const*interp2(avec, svec, eval([ind,'CmLbias']),ss,aoa);
     CmMbias = M_const*interp2(avec, svec, eval([ind,'CmMbias']),ss,aoa);
     CmNbias = M_const*interp2(avec, svec, eval([ind,'CmNbias']),ss,aoa);
-    
+
     bias = bias + roll*[CmLbias; CmMbias; CmNbias];
 end

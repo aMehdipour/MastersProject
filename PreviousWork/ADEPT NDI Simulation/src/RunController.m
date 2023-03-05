@@ -51,7 +51,7 @@ fslope = Ffit(3:4)*180/pi; % convert from N/deg to N/rad
         tmp(2,1)  = m*V*cos(g)*hreq - Lf*sin(bank) - Sf*cos(bank);
         Brot = [cos(bank) -sin(bank); sin(bank) cos(bank)];
         forcereqs = inv(Brot)*tmp; % [Lcs;Scs]
-        
+
         cmd_a = (forcereqs-fbias')./fslope';
         cmd_a = [0;cmd_a];
     elseif method == 1 % INDI
@@ -59,7 +59,7 @@ fslope = Ffit(3:4)*180/pi; % convert from N/deg to N/rad
         tmp(2,1)  = m*V*cos(g)*(hreq - hdot);
         Brot = [cos(bank) -sin(bank); sin(bank) cos(bank)];
         dforcereqs = inv(Brot)*tmp; % [Lcs;Scs]
-        
+
         dcmd_a = (dforcereqs)./fslope';
         cmd_a = [0;aoa;ssl]+[0;dcmd_a];
     end
@@ -69,14 +69,14 @@ angvec = [bank;aoa;ssl];
 for i = 1:3
     if abs(cmd_a(i)) > anglim
         cmd_a(i) = anglim*sign(cmd_a(i));
-        
+
         % Integreator anti-windup logic
         if i == 2 || i == 3 %implement on pitch and yaw axes
-            if abs(angvec(i)) >= anglim-0.1*pi/180 % if 
+            if abs(angvec(i)) >= anglim-0.1*pi/180 % if
                 eint_g(i-1) = 0;
             end
         end
-            
+
     end
 end
 
@@ -89,7 +89,7 @@ end
 err_a = cmd_a - [bank; aoa; ssl];
 cmd_r = kp_a*err_a;
 % cmd_r(3) = -cmd_r(3); %negative yaw rate corresponds to positive ss angle
-    
+
 cmd_r(1) = (cmd_r(1) - r*sin(aoa)*sec(ssl))/(cos(aoa)*sec(ssl));
 cmd_r(2) = cmd_r(2) + p*cos(aoa)*tan(ssl) + r*sin(aoa)*tan(ssl);
 cmd_r(3) = (-cmd_r(3) + p*sin(aoa))/cos(aoa);
@@ -129,9 +129,9 @@ wreq = [preq;qreq;rreq];
 if method == 0 % NDI
     Lmcs = Ixx*preq + Izz*r*q - Iyy*q*r - Lmv; % ignoring off-axis inertia (all zeros)
     Mmcs = Iyy*qreq + Ixx*p*r - Izz*p*r - Mmv;
-    Nmcs = Izz*rreq - Ixx*p*q + Iyy*p*q - Nmv; 
+    Nmcs = Izz*rreq - Ixx*p*q + Iyy*p*q - Nmv;
     v = [Lmcs; Mmcs; Nmcs]-bias;
-elseif method == 1 % INDI 
+elseif method == 1 % INDI
     wdot = [pdot;qdot;rdot];
     tmp2 = I*(wreq-wdot);
     Lmcs = tmp2(1);
@@ -146,7 +146,7 @@ umin = zeros(8,1); dumin = zeros(8,1);
 umax = zeros(8,1); dumax = zeros(8,1);
 if method == 0
     ud = zeros(8,1);
-    
+
     for i = 1:8
         umin(i) = max([-flim fclast(i)-maxdeflect]);
         umax(i) = min([flim fclast(i)+maxdeflect]);
@@ -160,12 +160,12 @@ if method == 0
     end
     % implement weighted least squares
     [fc,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam_wls);
-    
+
 elseif method == 1
     dud = zeros(8,1) - fd;
-    
+
     for i = 1:8
-        dumin(i) = max([-flim-fd(i) -maxdeflect]); 
+        dumin(i) = max([-flim-fd(i) -maxdeflect]);
         dumax(i) = min([flim-fd(i) maxdeflect]);
         if dud(i) < dumin(i)
             dud(i) = dumin(i);

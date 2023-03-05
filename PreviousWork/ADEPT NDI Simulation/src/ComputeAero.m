@@ -22,10 +22,11 @@ A_f = 0.026;
 A_A = 0.3849; % frontal area of ADEPT craft (m^2)
 R = 0.69; % reference length for moment calculation (m)
 Rf = 0.84;
-err = CFD.err;
+err = CFD.err; % Modeling error injection, set to 1 for no error in CFD states
+% cfd table 3rd dimension is for each flap angle
 
 %% Compute vehicle forces and moments
-ss = ss*180/pi; aoa = aoa*180/pi; % convert angles to degrees 
+ss = ss*180/pi; aoa = aoa*180/pi; % convert angles to degrees
 avec = CFD.aoa(:,1); % vector of angle of attack datapoints
 svec = CFD.ss(1,:); % vector of sideslip angle datapoints
 F_const = (1/2)*rho*A_A*V^2; % scaling factor for forces (N)
@@ -53,24 +54,24 @@ M_const = (1/2)*rho*A_f*Rf*V^2;
 L_F = zeros(1,8); D_F=L_F; S_F=L_F; Lm_F=L_F; Mm_F=L_F; Nm_F=L_F;
 
 for i = 1:8
-    
+
     if abs(fd(i)) > 20
         fd(i) = 20*sign(fd(i));
     end
-    
+
     % set up grid points for data entries
     if i == 1
     X = CFD.ss3d; Y = CFD.aoa3d; Z = CFD.deflect3d;
     end
-    
+
     ind = ['CFD.F' num2str(i) '.']; % flap indicator
-    L_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Clline']),ss,aoa,fd(i))*err; 
+    L_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Clline']),ss,aoa,fd(i))*err;
     D_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Cdline']),ss,aoa,fd(i))*err;
     S_F(i) = F_const*interp3(X, Y, Z, eval([ind 'Csline']),ss,aoa,fd(i))*err;
     Lm_F_pre(i) = M_const*interp3(X, Y, Z, eval([ind 'CmLline']),ss,aoa,fd(i))*err;
     Mm_F_pre(i) = M_const*interp3(X, Y, Z, eval([ind 'CmMline']),ss,aoa,fd(i))*err;
     Nm_F_pre(i) = M_const*interp3(X, Y, Z, eval([ind 'CmNline']),ss,aoa,fd(i))*err;
-    
+
     % Convert moments to body frame
     tmp = roll*[Lm_F_pre(i);Mm_F_pre(i);Nm_F_pre(i)];
     Lm_F(i) = tmp(1);

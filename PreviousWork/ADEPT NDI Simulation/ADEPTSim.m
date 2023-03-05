@@ -37,7 +37,7 @@ ctrl.ratelim = 10*pi/180;
 ctrl.anglim = 18*pi/180;
 
 % Rotational rate controller
-ctrl.kp_r = 18; 
+ctrl.kp_r = 18;
 
 % Angular displacement controller
 ctrl.kp_a = 6;
@@ -70,17 +70,17 @@ if method == 1 % implement filter for INDI
     ctrl.filt_disc = tf(b,a,ctrl.ts);
     a = [a 0]; b = [b 0];
     ctrl.a = a; ctrl.b = b;
-    
+
     % figure
     % bode(ctrl.filt_disc)
     % title('Angular Rate Filter')
-    
+
     % Guidance filter
     [b_g,a_g] = butter(1,250/500);
     ctrl.filt_disc = tf(b_g,a_g,ctrl.ts);
     a_g = [a_g 0]; b_g = [b_g 0];
     ctrl.a_g = a_g; ctrl.b_g = b_g;
-    
+
     % figure
     % opts1=bodeoptions('cstprefs');
     % opts1.PhaseVisible = 'off';
@@ -119,7 +119,7 @@ head = zeros(npoints,1); hdot = head; % heading angle (rad)
 p = zeros(npoints,1); pdot = p; % angular velocity about x axis (rad/s)
 q = zeros(npoints,1); qdot = q; % angular velocity about y axis (rad/s)
 r = zeros(npoints,1); rdot = r; % angular velocity about z axis (rad/s)
-pdotfilt = r; qdotfilt = r; rdotfilt = r; 
+pdotfilt = r; qdotfilt = r; rdotfilt = r;
 gdotfilt = r; hdotfilt = r;
 
 % Kinematics
@@ -141,10 +141,10 @@ cmd_g = zeros(2,npoints-1);
 M = 30; % Mach number (dless) and speed of sound (m/s)
 V(1) = M*c; gamma(1) = -5.5*pi/180; head(1) = 0;
 p(1) = 0; q(1) = 0; r(1) = 0;
-alt = 100000; %118000; 
+alt = 100000; %118000;
 alt_init = alt; % save initial altitude for filename
 z(1) = alt + Rearth;
-lat(1) = 0; lon(1) = 0; 
+lat(1) = 0; lon(1) = 0;
 bank(1) = 0; aoa(1) = 0; ss(1) = 0;
 
 fd = zeros(8,npoints); % flap deflection angles (deg)
@@ -159,7 +159,7 @@ ctrl.fclast = fc;
 % This section overrides the vehicle initial conditions to result in trim
 % conditions at the start of the simulation
 
-if 0 %M30 A100 
+if 0 %M30 A100
     fc = [-0.7761   -0.9669   -1.4826    1.1879    1.5912    2.6582    0.3138   -0.0417]';
 elseif 0 %M30 A100 FPA-5.5
     aoa(1) = 2.395*pi/180; ss(1) = -0.400*pi/180;
@@ -168,24 +168,24 @@ end
 %% Execute Computations
 tic
 for i = 1:npoints-1
-    
+
     % Interpolate density and gravitational force
     alt = z(i)-Rearth;
     rho = interp1(std.alt,std.rho,alt,'linear','extrap'); % atmospheric density (kg/m^3)
     gz = m*interp1(std.alt,std.g,alt,'linear','extrap'); % gravitational force (N)
-    
-    % Execute Controller 
+
+    % Execute Controller
     if mod(i*dt,ctrl.ts) == 0 && i >1
-        
+
         % Compute aerodynamic force/moment inputs to controller
         [v_aero,B,bias,f_aero,Ffit] = ControllerAero(V(i),rho,aoa(i),ss(i),bank(i),fd(:,i-1),CFD);
-        
+
         % Save state variables into input structure
         st = struct('g',gamma(i),'V',V(i),'head',head(i),'p',p(i),'q',q(i),'r',r(i),'bank',bank(i),'rho',rho,'fd',fd(:,i-1),...
             'gdot',gdotfilt(i-1),'z',z(i-1),'hdot',hdotfilt(i-1),'pdot',pdotfilt(i-1),'qdot',qdotfilt(i-1),'rdot',rdotfilt(i-1),...
             'aoa',aoa(i),'ssl',ss(i),'gz',gz);
 
-        % Commands (Input selected based on ctrl.loopselect)        
+        % Commands (Input selected based on ctrl.loopselect)
         ctrl.cmd_g = [-5.5;0]*pi/180; % p, q, r
 %         cmd_g(1,1) = -5.5*pi/180;
 %         ctrl.cmd_g = [cmd_g(1,i-1);0] + [0.75*V(i)/z(i)*cos(gamma(i));0]*dt;
@@ -198,8 +198,8 @@ for i = 1:npoints-1
 %         if i == 2
 %             ctrl.cmd_a = [0; aoa(2); ss(2)];
 %         end
-           
-        if ctrl.loopselect == 1 
+
+        if ctrl.loopselect == 1
             if i*dt > 1 && i*dt < 3
                 ctrl.cmd_a = [0;1; 0]*pi/180;
             elseif i*dt > 1
@@ -209,7 +209,7 @@ for i = 1:npoints-1
             end
 %               ctrl.cmd_a = cmd_a(:,i);
         end
-        
+
         if i*dt > 0.5 && i*dt < 1.5
             ctrl.cmd_r = [0; 1;0]*pi/180;
         elseif i*dt > 0.5
@@ -217,7 +217,7 @@ for i = 1:npoints-1
         else
             ctrl.cmd_r = [0; 0; 0];
         end
-        
+
         % Execute control law
         [fc,ctrl] = RunController(st,ctrl,v_aero,f_aero,Ffit,B,bias,method);
 
@@ -228,7 +228,7 @@ for i = 1:npoints-1
         cmd_r(:,i) = ctrl.cmd_r;
         cmd_g(:,i) = ctrl.cmd_g;
     end
-    
+
     % Update flap Positions
     fd(:,i) = fc;
 
@@ -239,18 +239,18 @@ for i = 1:npoints-1
     Vdot(i) = -(gz/m)*sin(gamma(i)) - (1/m)*D;
     gammadot(i) = (-gz/(m*V(i)) + (V(i)/z(i)))*cos(gamma(i)) + 1/(m*V(i))*(L*cos(bank(i)) - S*sin(bank(i)));
     hdot(i) = (1/(m*V(i)*cos(gamma(i))))*(L*sin(bank(i)) + S*cos(bank(i)));
-    
+
     gyro = cross([p(i); q(i); r(i)],I*[p(i); q(i); r(i)]); %gyroscopic torque (Nm)
     Omegadot = inv(I)*([Lm; Mm; Nm;] - gyro); % rotational dynamics derivatives
     pdot(i) = Omegadot(1);
     qdot(i) = Omegadot(2);
     rdot(i) = Omegadot(3);
 
-    zdot(i) = V(i)*sin(gamma(i));    
+    zdot(i) = V(i)*sin(gamma(i));
     bdot(i) = p(i)*cos(aoa(i))*sec(ss(i)) + r(i)*sin(aoa(i))*sec(ss(i));
     adot(i) = -p(i)*cos(aoa(i))*tan(ss(i)) + q(i) - r(i)*sin(aoa(i))*tan(ss(i));
     ssdot(i) = p(i)*sin(aoa(i)) - r(i)*cos(aoa(i));
-    
+
     %Filter derivatives for INDI processing
     % Store filter inputs [in(n) in(n-1) in(n-2)]
     p_in = [pdot(i) p_in(1:2)]; q_in = [qdot(i) q_in(1:2)]; r_in = [rdot(i) r_in(1:2)];
@@ -285,7 +285,7 @@ for i = 1:npoints-1
         disp(string1)
         alt
     end
-    
+
     % End simulation when altitude reaches 0
     if alt <= 0
         break
@@ -304,13 +304,13 @@ set(groot,'defaultAxesXGrid','on')
 set(groot,'defaultAxesYGrid','on')
 
 if ctrl.loopselect == 0
-    figure; 
+    figure;
     subplot(2,1,1); plot(tvec(2:end-1),180/pi*cmd_g(1,2:end),tvec,gamma*180/pi);
     ylabel('Flight Path Angle (deg)')
     legend('Guidance Command','Response')
     subplot(2,1,2); plot(tvec(2:end-1),180/pi*cmd_g(2,2:end),tvec,head*180/pi)
     ylabel('Heading Angle (deg)'); xlabel('Time(sec)'); grid on
-    
+
     figure
     subplot(2,1,1); plot(tvec,V)
     title('Flight Conditions'); ylabel('Velocity (m/s)')
@@ -349,7 +349,7 @@ ylabel('r (deg/sec)'); xlabel('Time(sec)'); grid on
 % figure;
 % subplot(3,1,1); plot(tvec,bank*180/pi)
 % title('Angle Displacements'); ylabel('Bank Angle (deg)')
-% subplot(3,1,2); plot(tvec,aoa*180/pi); 
+% subplot(3,1,2); plot(tvec,aoa*180/pi);
 % ylabel('Angle of Attack (deg)')
 % subplot(3,1,3); plot(tvec,ss*180/pi)
 % ylabel('Sideslip Angle (deg)'); xlabel('Time(sec)'); grid on
@@ -359,7 +359,7 @@ subplot(3,1,1); plot(tvec(1:end-1),flin(1,:)*180/pi,tvec(1:end-1),pdot(1:end-1)*
 title('Angular Accel Output'); ylabel('pdot (deg/s^2)')
 % ylim([-2 2])
 legend('Accel Command','Response')
-subplot(3,1,2); plot(tvec(1:end-1),flin(2,:)*180/pi,tvec(1:end-1),qdot(1:end-1)*180/pi); 
+subplot(3,1,2); plot(tvec(1:end-1),flin(2,:)*180/pi,tvec(1:end-1),qdot(1:end-1)*180/pi);
 ylabel('qdot (deg/s^2)')
 % ylim([-2 2])
 subplot(3,1,3); plot(tvec(1:end-1),flin(3,:)*180/pi, tvec(1:end-1),rdot(1:end-1)*180/pi)
@@ -369,7 +369,7 @@ ylabel('rdot (deg/s^2)'); xlabel('Time(sec)'); grid on
 % figure;
 % subplot(3,1,1); plot(tvec(1:end-1),pdot(1:end-1)*180/pi)
 % title('Angular Accel Output'); ylabel('pdot (deg/s^2)')
-% subplot(3,1,2); plot(tvec(1:end-1),qdot(1:end-1)*180/pi); 
+% subplot(3,1,2); plot(tvec(1:end-1),qdot(1:end-1)*180/pi);
 % ylabel('qdot (deg/s^2)')
 % subplot(3,1,3); plot(tvec(1:end-1),rdot(1:end-1)*180/pi)
 % ylabel('rdot (deg/s^2)'); xlabel('Time(sec)'); grid on
@@ -388,7 +388,7 @@ grid on
 % plot(tvec,gammadot,tvec,gdotfilt)
 % figure
 % plot(tvec,hdot,tvec,hdotfilt)
-% 
+%
 % figure
 % plot(tvec,pdot,tvec,pdotfilt)
 % figure
