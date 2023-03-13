@@ -9,9 +9,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clc; clear; %close all
-addpath('/home/amehdipour/repos/MastersProject/PreviousWork/Sim/Data');
-addpath('/home/amehdipour/repos/MastersProject/PreviousWork/Sim/QCAT/qcat');
-addpath('/home/amehdipour/repos/MastersProject/PreviousWork/Sim/src'); 
+addpath('/home/amehdipour/repos/MastersProject/Sim/Data');
+addpath('/home/amehdipour/repos/MastersProject/Sim/QCAT/qcat');
+addpath('/home/amehdipour/repos/MastersProject/Sim/src');
 % addpath Outputs
 load CFD; load std_atmos; load att_profile
 
@@ -172,7 +172,8 @@ elseif 0 %M30 A100 FPA-5.5
 end
 
 % IMU gyro noise specifications
-gyroNoiseDensity = deg2rad(0:0.01:0.1);
+gyroNoiseDensity = linspace(0, 1e-5, 5);
+dataSave.gyroNoiseDensity = gyroNoiseDensity;
 
 %% Execute Computations
 tic
@@ -252,9 +253,12 @@ for j =  1:length(gyroNoiseDensity)
 
         gyro = cross([p(i); q(i); r(i)],I*[p(i); q(i); r(i)]); %gyroscopic torque (Nm)
         Omegadot = inv(I)*([Lm; Mm; Nm;] - gyro); % rotational dynamics derivatives
-        pdot(i) = Omegadot(1) + normrnd(0, sqrt(gyroNoiseDensity(j)));
-        qdot(i) = Omegadot(2) + normrnd(0, sqrt(gyroNoiseDensity(j)));
-        rdot(i) = Omegadot(3) + normrnd(0, sqrt(gyroNoiseDensity(j)));
+        pdot(i) = Omegadot(1);
+        qdot(i) = Omegadot(2);
+        rdot(i) = Omegadot(3);
+        dataSave.pdotSave(i, j) = pdot(i);
+        dataSave.qdotSave(i, j) = qdot(i);
+        dataSave.rdotSave(i, j) = rdot(i);
 
         zdot(i) = V(i)*sin(gamma(i));
         bdot(i) = p(i)*cos(aoa(i))*sec(ss(i)) + r(i)*sin(aoa(i))*sec(ss(i));
@@ -271,6 +275,9 @@ for j =  1:length(gyroNoiseDensity)
         rdotfilt(i) = filter_discrete(r_in, r_mem,a,b);
         gdotfilt(i) = filter_discrete(g_in, g_mem,a_g,b_g);
         hdotfilt(i) = filter_discrete(h_in, h_mem,a_g,b_g);
+        dataSave.pdotFilt(i, j) = rad2deg(pdotfilt(i));
+        dataSave.qdotFilt(i, j) = rad2deg(qdotfilt(i));
+        dataSave.rdotFilt(i, j) = rad2deg(rdotfilt(i));
 
         % Store filter outputs into "memory" [out(n) out(n-1)]
         p_mem = [pdotfilt(i) p_mem(1)]; q_mem = [qdotfilt(i) q_mem(1)]; r_mem = [rdotfilt(i) r_mem(1)];
@@ -280,9 +287,9 @@ for j =  1:length(gyroNoiseDensity)
         V(i+1) = V(i) + Vdot(i)*dt;
         gamma(i+1) = gamma(i) + gammadot(i)*dt;
         heading(i+1) = heading(i) + hdot(i)*dt;
-        p(i+1) = p(i) + pdot(i)*dt;
-        q(i+1) = q(i) + qdot(i)*dt;
-        r(i+1) = r(i) + rdot(i)*dt;
+        p(i+1) = p(i) + pdot(i)*dt + normrnd(0, sqrt(gyroNoiseDensity(j)));
+        q(i+1) = q(i) + qdot(i)*dt + normrnd(0, sqrt(gyroNoiseDensity(j)));
+        r(i+1) = r(i) + rdot(i)*dt + normrnd(0, sqrt(gyroNoiseDensity(j)));
         z(i+1) = z(i) + zdot(i)*dt;
         bank(i+1) = bank(i) + bdot(i)*dt;
         aoa(i+1) = aoa(i) + adot(i)*dt;
@@ -301,6 +308,24 @@ for j =  1:length(gyroNoiseDensity)
             break
         end
     end
+    dataSave.p(:, j) = rad2deg(p);
+    dataSave.q(:, j) = rad2deg(q);
+    dataSave.r(:, j) = rad2deg(r);
+    dataSave.bank(:, j) = rad2deg(bank);
+    dataSave.aoa(:, j) = rad2deg(aoa);
+    dataSave.heading(:, j) = rad2deg(heading);
+    dataSave.gamma(:, j) = rad2deg(gamma);
+    dataSave.flightPathCmd(:, :, j) = rad2deg(cmd_g(1,:));
+    dataSave.headingCmd(:, j) = rad2deg(cmd_g(2,:));
+    dataSave.bankCmd(:, j) = rad2deg(cmd_a(1,1:length(aoa)));
+    dataSave.aoaCmd(:, j) = rad2deg(cmd_a(2,1:length(aoa)));
+    dataSave.ssCmd(:, j) = rad2deg(cmd_a(3,1:length(aoa)));
+    dataSave.pCmd(:, :, j) = rad2deg(cmd_r(1,:));
+    dataSave.qCmd(:, :, j) = rad2deg(cmd_r(2,:));
+    dataSave.rCmd(:, :, j) = rad2deg(cmd_r(3,:));
+    dataSave.finCmd(:, :, j) = rad2deg(flin);
+    dataSave.sideslip = rad2deg(ss);
+    data.time(:,j) = tvec;
 
     disp('Simulation Complete')
     toc
@@ -310,19 +335,19 @@ for j =  1:length(gyroNoiseDensity)
     save(savestring)
 
     %% Plots
-    % set(0, 'DefaultLineLineWidth', 1.3);
+    set(0, 'DefaultLineLineWidth', 2);
     set(groot,'defaultAxesXGrid','on')
     set(groot,'defaultAxesYGrid','on')
 
     if ctrl.loopselect == 0
-        figure;
+        figure('Name', ['Flight Path Angle and Heading' num2str(gyroNoiseDensity(j))]);
         subplot(2,1,1); plot(tvec(2:end-1),180/pi*cmd_g(1,2:end),tvec,gamma*180/pi);
         ylabel('Flight Path Angle (deg)')
         legend('Guidance Command','Response')
         subplot(2,1,2); plot(tvec(2:end-1),180/pi*cmd_g(2,2:end),tvec,heading*180/pi)
         ylabel('headinging Angle (deg)'); xlabel('Time(sec)'); grid on
 
-        figure
+        figure('Name', ['Altitude and Velocity' num2str(gyroNoiseDensity(j))])
         subplot(2,1,1); plot(tvec,V)
         title(['Flight Conditions with Gyro noise of ' num2str(gyroNoiseDensity(j))]); ylabel('Velocity (m/s)')
         subplot(2,1,2); plot(tvec,z-Rearth)
@@ -330,7 +355,7 @@ for j =  1:length(gyroNoiseDensity)
     end
 
     if ctrl.loopselect <= 1
-        figure;
+        figure('Name', ['Angle Outputs' num2str(gyroNoiseDensity(j))]);
         subplot(3,1,1); plot(tvec,180/pi*cmd_a(1,1:length(aoa)),tvec,bank*180/pi)
         title(['Angle Output with Gyro noise of ' num2str(gyroNoiseDensity(j))]); ylabel('bank (deg)')
         legend('Angle Command','Response')
@@ -340,7 +365,7 @@ for j =  1:length(gyroNoiseDensity)
         ylabel('ss (deg)'); xlabel('Time(sec)'); grid on
     end
 
-    figure;
+    figure('Name', ['Angular Rate Outputs' num2str(gyroNoiseDensity(j))]);
     subplot(3,1,1); plot(tvec(1:end-1),cmd_r(1,:)*180/pi,tvec,p*180/pi)
     title(['Angular Rate Output with Gyro noise of ' num2str(gyroNoiseDensity(j))]); ylabel('p (deg/sec)')
     legend('Command','Response')
@@ -365,7 +390,7 @@ for j =  1:length(gyroNoiseDensity)
     % subplot(3,1,3); plot(tvec,ss*180/pi)
     % ylabel('Sideslip Angle (deg)'); xlabel('Time(sec)'); grid on
 
-    figure;
+    figure('Name', ['Angular Accel Output' num2str(gyroNoiseDensity(j))]);
     subplot(3,1,1); plot(tvec(1:end-1),flin(1,:)*180/pi,tvec(1:end-1),pdot(1:end-1)*180/pi)
     title(['Angular Accel Output with Gyro noise of ' num2str(gyroNoiseDensity(j))]); ylabel('pdot (deg/s^2)')
     % ylim([-2 2])
@@ -387,8 +412,9 @@ for j =  1:length(gyroNoiseDensity)
 
     % reorder flaps to match report numbering
     fdplot = [fd(2,:);fd(3,:);fd(4,:);fd(5,:);fd(6,:);fd(7,:);fd(8,:);fd(1,:)];
+    dataSave.finDeflectSave(:,:,j) = fdplot;
 
-    figure
+    figure('Name', ['Flap Deflections ' num2str(gyroNoiseDensity(j))])
     plot(tvec(1:end-1),fdplot(:,1:end-1))
     title(['Flap Deflect Angles with Gyro noise of ' num2str(gyroNoiseDensity(j))]); ylabel('deg')
     legend('F1','F2','F3','F4','F5','F6','F7','F8')
@@ -396,6 +422,9 @@ for j =  1:length(gyroNoiseDensity)
     grid on
 
 end
+
+
+plotGyroNoise(dataSave)
 
 % figure
 % plot(tvec,gammadot,tvec,gdotfilt)
