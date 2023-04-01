@@ -120,18 +120,18 @@ flin = [vpfilt(end);vqfilt(end);vrfilt(end)];
 % flin = [0;1;1]*pi/180;
 
 % Output filtered signals to dynamic inversion
-preq = flin(1); qreq = flin(2); rreq = flin(3);
-% preq = vlin(1); qreq = vlin(2); rreq = vlin(3);
-% preq = 0; qreq = 0; rreq =0;
-wreq = [preq;qreq;rreq];
 
+% preq = 0; qreq = 0; rreq =0;
 % Dynamic Inversion
 if method == 0 % NDI
+    preq = vlin(1); qreq = vlin(2); rreq = vlin(3);
     Lmcs = Ixx*preq + Izz*r*q - Iyy*q*r - Lmv; % ignoring off-axis inertia (all zeros)
     Mmcs = Iyy*qreq + Ixx*p*r - Izz*p*r - Mmv;
     Nmcs = Izz*rreq - Ixx*p*q + Iyy*p*q - Nmv;
     v = [Lmcs; Mmcs; Nmcs]-bias;
 elseif method == 1 % INDI
+    preq = flin(1); qreq = flin(2); rreq = flin(3);
+    wreq = [preq;qreq;rreq];
     wdot = [pdot;qdot;rdot];
     tmp2 = I*(wreq-wdot);
     Lmcs = tmp2(1);
