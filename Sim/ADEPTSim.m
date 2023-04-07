@@ -35,7 +35,7 @@ ts_g = 1/500;
 ctrl.tsratio = ts_g/ctrl.ts;
 ctrl.cnt = 1;
 methods = [0, 1]; % 0 to use NDI,1 to use INDI
-ctrl.loopselect = 2; % 0 to use guidance, 1 to use angle, 2 to use rate
+ctrl.loopselect = 0; % 0 to use guidance, 1 to use angle, 2 to use rate
 cs_rate = 200; % maximum deflection rate for control surfaces (deg/s)
 ctrl.maxdeflect = ctrl.ts*cs_rate; %maximum deflection over one ctrl sample (deg)
 ctrl.ratelim = 10*pi/180;
@@ -146,7 +146,8 @@ for method = methods
 
     %% Initial Conditions
     M = 30; % Mach number (dless) and speed of sound (m/s)
-    V(1) = M*c; gamma(1) = -5.5*pi/180; heading(1) = 0;
+    V(1) = M*c; 
+    heading(1) = 0;
     p(1) = 0; q(1) = 0; r(1) = 0;
     alt = 100000; %118000;
     alt_init = alt; % save initial altitude for filename
@@ -173,15 +174,17 @@ for method = methods
         fc = [1.6441    0.1347   -1.6763   -1.3564   -1.2157    0.5829    1.3549    1.8832]';
     end
 
-    % IMU gyro noise specifications
-    gyroNoiseDensity = [0, 1e-5, 1e-4, 1e-3];%linspace(0, 1e-3, 10);
+    % IMU gyro noise specifications    
+    gammas = -40:10:40;
+    gyroNoiseDensity = gammas;%linspace(0, 1e-5, 5);
     dataSave.gyroNoiseDensity = gyroNoiseDensity;
-
+    dataSave.gammas = gammas;
     %% Execute Computations
     tic
-    for j =  1:length(gyroNoiseDensity)
+    for j =  1:length(gammas)
         for i = 1:npoints-1
 
+        gamma(1) = gammas(j) * pi/180;
             % Interpolate density and gravitational force
             alt = z(i)-Rearth;
             rho = interp1(std.alt,std.rho,alt,'linear','extrap'); % atmospheric density (kg/m^3)
@@ -233,9 +236,9 @@ for method = methods
 
                 % Execute control law
                 st_sensor = st;
-                st_sensor.q = st_sensor.q + randn * sqrt(gyroNoiseDensity(j));
-                st_sensor.p = st_sensor.p + randn * sqrt(gyroNoiseDensity(j));
-                st_sensor.r = st_sensor.r + randn * sqrt(gyroNoiseDensity(j));
+                %st_sensor.q = st_sensor.q + randn * sqrt(gyroNoiseDensity(j));
+                %st_sensor.p = st_sensor.p + randn * sqrt(gyroNoiseDensity(j));
+                %st_sensor.r = st_sensor.r + randn * sqrt(gyroNoiseDensity(j));
                 [fc,ctrl] = RunController(st_sensor,ctrl,v_aero,f_aero,Ffit,B,bias,method);
 
                 %store telemetry

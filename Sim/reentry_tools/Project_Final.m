@@ -15,8 +15,8 @@ clc;clear;close all;
 % radius = str2double(answer{3});
 % tw = str2double(answer{4});
 
-alt = 80000;
-minf = 9;
+alt = 50000;
+minf = 12;
 radius = 2;
 tw = 3000;
 
@@ -117,6 +117,7 @@ H2_z3 = 0;
 
 while abs(H2_z3-ht)>1e3
         tIter3 = tStart-count3;
+        % sprintf('The enthalpy error is %.2f, tIter3 is %.2f\n', H2_z3-ht, tIter3)
         [partP3,X3,C3,RhoMix3,S3,H2_z3,MwMix1] = TCE(po2,tIter3,NS,NH,N2S,...
             N2H,NOS,NOH,OS,OH,O2S,O2H,trange);
         count3 = count3+1;

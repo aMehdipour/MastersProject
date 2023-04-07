@@ -13,13 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Reference Notes/Reference List.md",
+                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "adfe5056c54ba7a5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -85,7 +98,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Reference Notes/Reference List.md",
+                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +115,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Reference Notes/Reference List.md",
+                "file": "Reference Notes/Entry Guidance - A Unified Method.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,7 +138,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Reference Notes/Reference List.md"
+                "file": "Reference Notes/Entry Guidance - A Unified Method.md"
               }
             }
           }
@@ -146,11 +159,12 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "f0d9494b94f2aa84",
+  "active": "adfe5056c54ba7a5",
   "lastOpenFiles": [
+    "General Scratch.md",
     "Reference Notes/Entry Guidance - A Unified Method.md",
-    "Literature Review Scratch.md",
     "Reference Notes/Reference List.md",
+    "Literature Review Scratch.md",
     "Reference Notes/Trajectory Control for a Low-Lift Re-Entry Vehicle.md",
     "Reference Notes"
   ]
