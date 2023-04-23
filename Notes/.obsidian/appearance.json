@@ -1,4 +1,7 @@
 {
   "accentColor": "#ffffff",
-  "cssTheme": "Dracula for Obsidian"
+  "cssTheme": "Catppuccin",
+  "interfaceFontFamily": "JetBrainsMono Nerd Font",
+  "textFontFamily": "JetBrainsMono Nerd Font",
+  "monospaceFontFamily": "JetBrainsMono Nerd Font"
 }
