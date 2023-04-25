@@ -26,6 +26,7 @@ constants.FRONTAL_AREA     = 0.3849; % frontal area of ADEPT craft (m^2)
 constants.REFERENCE_LENGTH = 0.69; % reference length for moment calculation (m)
 constants.FLAP_MOMENT_ARM  = 0.84;
 constants.FLAP_LIMIT       = 20; % Flap deflection limit (degrees)
+constants.OMEGA_EARTH      = 7.292115e-5; % Earth's rotation rate (rad/s)
 rng(69); % Set the RNG seed for reproducability
 
 %% Sim Settings
@@ -33,7 +34,7 @@ dt = 1/500;
 tend = 5;
 tvec = 0:dt:tend;
 npoints = length(tvec); % Number of timesteps
-CFD.err = 1; % Scaling factor for aero variables to add scaling error
+CFD.aeroScalingFactor = 1; % Scaling factor for aero variables to add scaling error
 
 %% Controller
 ctrl.ts = 1/500; % sample time (s)
@@ -128,21 +129,27 @@ for method = methods
     %% Set up state variables
     % Dynamics
     V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
-    gamma = zeros(npoints,1); gammadot = gamma; % flight path angle (rad)
+    flightPathAngle = zeros(npoints,1); gammadot = flightPathAngle; % flight path angle (rad)
     heading = zeros(npoints,1); headingDot = heading; % headinging angle (rad)
+    chi = zeros(npoints,1); chidot = chi; % track angle (rad)
     p = zeros(npoints,1); pDot = p; % angular velocity about x axis (rad/s)
     q = zeros(npoints,1); qDot = q; % angular velocity about y axis (rad/s)
     r = zeros(npoints,1); rDot = r; % angular velocity about z axis (rad/s)
     pDotFilt = r; qDotFilt = r; rDotFilt = r;
-    gdotfilt = r; headingDotFilt = r;
+    gammaDotFilt = r; headingDotFilt = r;
+    rotBodyFromECEF = zeros(3,3,npoints);
+    rotNedFromBody  = zeros(3,3,npoints);
+    rotNedFromECEF  = zeros(3,3,npoints);
 
     % Kinematics
-    z = zeros(npoints,1); zdot = z; % orbital radius (m)
-    lat = zeros(npoints,1); latdot = lat; % latitude (rad)
-    lon = zeros(npoints,1); londot = lon; % longitude (rad)
-    bank = zeros(npoints,1); bdot = bank; % bank angle (rad)
-    aoa = zeros(npoints,1); adot = aoa; % angle of attack (rad)
-    ss = zeros(npoints,1); ssdot = ss; % sideslip angle (rad)
+    z     = zeros(npoints,1); zdot = z; % orbital radius (m)
+    lat   = zeros(npoints,1); latdot = lat; % latitude (rad)
+    lon   = zeros(npoints,1); londot = lon; % longitude (rad)
+    bank  = zeros(npoints,1); bdot = bank; % bank angle (rad)
+    aoa   = zeros(npoints,1); adot = aoa; % angle of attack (rad)
+    ss    = zeros(npoints,1); ssdot = ss; % sideslip angle (rad)
+    pitch = zeros(npoints,1);
+    roll  = zeros(npoints,1);
 
     % Telemetry
     vlin = zeros(3,npoints-1);
@@ -165,7 +172,7 @@ for method = methods
     lat(1) = deg2rad(37.3352); lon(1) = deg2rad(121.8811);
     bank(1) = 0; aoa(1) = 0; ss(1) = 0;
 
-    fd = zeros(8,npoints); % flap deflection angles (deg)
+    flapDeflection = zeros(8,npoints); % flap deflection angles (deg)
     fc =zeros(8,1);
 
     % controller states
@@ -185,7 +192,7 @@ for method = methods
     end
 
     % IMU gyro noise specifications
-    gammas = -40:20:40;
+    gammas = -5.5;%-40:20:40;
     gyroNoiseDensity = gammas;%[0, 1e-5, 1e-4, 1e-3];%linspace(0, 1e-3, 10);
     dataSave.gyroNoiseDensity = gyroNoiseDensity;
 
@@ -193,28 +200,34 @@ for method = methods
     tic
     for j =  1:length(gyroNoiseDensity)
         V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
-        gamma = zeros(npoints,1); gammadot = gamma; % flight path angle (rad)
+        flightPathAngle = zeros(npoints,1); gammadot = flightPathAngle; % flight path angle (rad)
         heading = zeros(npoints,1); headingDot = heading; % headinging angle (rad)
+        chi = zeros(npoints,1); chidot = chi; % track angle (rad)
         p = zeros(npoints,1); pDot = p; % angular velocity about x axis (rad/s)
         q = zeros(npoints,1); qDot = q; % angular velocity about y axis (rad/s)
         r = zeros(npoints,1); rDot = r; % angular velocity about z axis (rad/s)
         pDotFilt = r; qDotFilt = r; rDotFilt = r;
-        gdotfilt = r; headingDotFilt = r;
+        gammaDotFilt = r; headingDotFilt = r;
+        rotBodyFromECEF = zeros(3,3,npoints);
+        rotNedFromBody  = zeros(3,3,npoints);
+        rotNedFromECEF  = zeros(3,3,npoints);
 
         % Kinematics
-        z = zeros(npoints,1); zdot = z; % orbital radius (m)
-        lat = zeros(npoints,1); latdot = lat; % latitude (rad)
-        lon = zeros(npoints,1); londot = lon; % longitude (rad)
-        bank = zeros(npoints,1); bdot = bank; % bank angle (rad)
-        aoa = zeros(npoints,1); adot = aoa; % angle of attack (rad)
-        ss = zeros(npoints,1); ssdot = ss; % sideslip angle (rad)
+        z     = zeros(npoints,1); zdot = z; % orbital radius (m)
+        lat   = zeros(npoints,1); latdot = lat; % latitude (rad)
+        lon   = zeros(npoints,1); londot = lon; % longitude (rad)
+        bank  = zeros(npoints,1); bdot = bank; % bank angle (rad)
+        aoa   = zeros(npoints,1); adot = aoa; % angle of attack (rad)
+        ss    = zeros(npoints,1); ssdot = ss; % sideslip angle (rad)
+        pitch = zeros(npoints,1);
+        roll  = zeros(npoints,1);
 
         % Telemetry
         vlin = zeros(3,npoints-1);
         flin = zeros(3,npoints-1);
         if ~exist('cmd_a'); cmd_a = zeros(3,npoints); end
         cmd_r = zeros(3,npoints-1); % [p, q, r]
-        cmd_g = zeros(2,npoints-1); % [gamma; heading]
+        cmd_g = zeros(2,npoints-1); % [flightPathAngle; heading]
 
         %% Initial Conditions
         M = 30; % Mach number (dless) and speed of sound (m/s)
@@ -227,14 +240,22 @@ for method = methods
         lat(1) = deg2rad(37.3352); lon(1) = deg2rad(121.8811);
         bank(1) = 0; aoa(1) = 0; ss(1) = 0;
 
-        fd = zeros(8,npoints); % flap deflection angles (deg)
-        fc =zeros(8,1);
+        flapDeflection = zeros(8,npoints); % flap deflection angles (deg)
+        fc = zeros(8,1);
 
         % controller states
         ctrl.errorLastGammaHeading = [0; 0];
         ctrl.errorIntegGammaHeading = [0; 0];
         ctrl.fclast = fc;
-        gamma(1) = gammas(j) * pi/180;
+        flightPathAngle(1) = gammas(j) * pi/180;
+        pitch(1) = flightPathAngle(1) + aoa(1);
+        roll(1)  = bank(1);
+        chi(1)   = calculateTrackAngle(V(1), lat(1), lon(1), heading(1), ss(1), constants, dt);
+
+        % Rotation matrices
+        rotNedFromBody(:,:,1)  = angle2dcm(heading(1),pitch(1),roll(1),'ZYX');
+        rotNedFromECEF(:,:,1)  = calcRotNedFromEcef(lat(1),lon(1));
+        rotBodyFromECEF(:,:,1) = rotNedFromBody(:,:,1)' * rotNedFromECEF(:,:,1);
 
         for i = 1:npoints-1 % npoints is the number of time steps
 
@@ -247,21 +268,28 @@ for method = methods
             if mod(i * dt,ctrl.ts) == 0 && i >1
 
                 % Compute aerodynamic force/moment inputs to controller
-                [v_aero,B,bias,f_aero,Ffit] = ControllerAero(V(i),rho,aoa(i),ss(i),bank(i),fd(:,i-1),CFD,constants);
+                [v_aero,B,bias,f_aero,Ffit] = ControllerAero(V(i),rho,aoa(i),ss(i),bank(i),flapDeflection(:,i-1),CFD,constants);
 
                 % Save state variables into input structure
-                st = struct('g',gamma(i),'V',V(i),'heading',heading(i),'p',p(i),'q',q(i),'r',r(i),'bank',bank(i),'rho',rho,'fd',fd(:,i-1),...
-                    'gdot',gdotfilt(i-1),'z',z(i-1),'headingDot',headingDotFilt(i-1),'pDot',pDotFilt(i-1),'qDot',qDotFilt(i-1),'rDot',rDotFilt(i-1),...
-                    'aoa',aoa(i),'ssl',ss(i),'gz',gz);
+                st = struct('flightPathAngle',flightPathAngle(i),'V',V(i),'pitch',pitch(i),'roll',roll(i),'heading',heading(i),'p',p(i),'q',q(i),'r',r(i),'bank',bank(i),'rho',rho,'flapDeflection',flapDeflection(:,i-1),...
+                    'gammaDot',gammaDotFilt(i-1),'z',z(i-1),'headingDot',headingDotFilt(i-1),'pDot',pDotFilt(i-1),'qDot',qDotFilt(i-1),'rDot',rDotFilt(i-1),...
+                    'aoa',aoa(i),'ssl',ss(i),'gz',gz,'latitude',lat(i),'longitude',lon(i),'rotBodyFromECEF',rotBodyFromECEF(:,:,i),'rotNedFromBody',rotNedFromBody(:,:,i),...
+                    'rotNedFromECEF',rotNedFromECEF(:,:,i));
 
                 % Commands (Input selected based on ctrl.loopselect)
-                ctrl.cmd_g = [gammas(j)-5; 0] * pi/180; % NOTE: Currently subtracting 5 from initial gamma
+                % NOTE: The original implementation only set the flightPathAngle
+                % command to the inital angle for all time.
+                if i * dt >= 2 && ctrl.loopselect == 0
+                    ctrl.cmd_g = [0 ; 0];
+                else
+                    ctrl.cmd_g = [flightPathAngle(1) ; 0];
+                end
 
                 %         cmd_g(1,1) = -5.5 * pi/180;
-                %         ctrl.cmd_g = [cmd_g(1,i-1);0] + [0.75 * V(i)/z(i) * cos(gamma(i));0] * dt;
+                %         ctrl.cmd_g = [cmd_g(1,i-1);0] + [0.75 * V(i)/z(i) * cos(flightPathAngle(i));0] * dt;
                 %         cmd_slope = 0.02 * pi/180; %rad/sec
                 %         if i * dt < 10
-                %             ctrl.cmd_g = [gamma(1); heading(1)] - cmd_slope * [i * dt; 0];
+                %             ctrl.cmd_g = [flightPathAngle(1); heading(1)] - cmd_slope * [i * dt; 0];
                 %         else
                 %             ctrl.cmd_g = [cmd_g(1,i-1); heading(1)] + cmd_slope * [0; i * dt-10];
                 %         end
@@ -282,9 +310,9 @@ for method = methods
                 end
 
                 if i * dt > 0.5 && i * dt < 1.5
-                    ctrl.cmd_r = [0; 1;0] * pi/180;
+                    ctrl.cmd_r = [0; 1; 0] * pi/180;
                 elseif i * dt > 0.5
-                    ctrl.cmd_r = [0; 1;1] * pi/180;
+                    ctrl.cmd_r = [0; 1; 1] * pi/180;
                 else
                     ctrl.cmd_r = [0; 0; 0];
                 end
@@ -302,18 +330,18 @@ for method = methods
                 cmd_a(:,i) = ctrl.cmd_a;
                 cmd_r(:,i) = ctrl.cmd_r;
                 cmd_g(:,i) = ctrl.cmd_g;
-            end
+            end % end if mod(i * dt,ctrl.ts) == 0
 
             % Update flap Positions
-            fd(:,i) = fc;
+            flapDeflection(:,i) = fc;
 
             % Compute aerodynamic forces and moments
-            [L,D,S,Lm,Mm,Nm] = ComputeAero(V(i),rho,aoa(i),ss(i),bank(i),fd(:,i),CFD,constants);
+            [L,D,S,Lm,Mm,Nm] = ComputeAero(V(i),rho,aoa(i),ss(i),bank(i),flapDeflection(:,i),CFD,constants);
 
             % Compute State Derivatives
-            Vdot(i) = -(gz/constants.MASS) * sin(gamma(i)) - (1/constants.MASS) * D;
-            gammadot(i) = (-gz/(constants.MASS * V(i)) + (V(i)/z(i))) * cos(gamma(i)) + 1/(constants.MASS * V(i)) * (L * cos(bank(i)) - S * sin(bank(i)));
-            headingDot(i) = (1/(constants.MASS * V(i) * cos(gamma(i)))) * (L * sin(bank(i)) + S * cos(bank(i)));
+            Vdot(i) = -(gz/constants.MASS) * sin(flightPathAngle(i)) - (1/constants.MASS) * D;
+            gammadot(i) = (-gz/(constants.MASS * V(i)) + (V(i)/z(i))) * cos(flightPathAngle(i)) + 1/(constants.MASS * V(i)) * (L * cos(bank(i)) - S * sin(bank(i)));
+            headingDot(i) = (1/(constants.MASS * V(i) * cos(flightPathAngle(i)))) * (L * sin(bank(i)) + S * cos(bank(i)));
 
             gyro = cross([p(i); q(i); r(i)],constants.INERTIA * [p(i); q(i); r(i)]); %gyroscopic torque (Nm)
             Omegadot = inv(constants.INERTIA) * ([Lm; Mm; Nm;] - gyro); % rotational dynamics derivatives
@@ -324,7 +352,7 @@ for method = methods
             dataSave.qDotSave(i, j, method + 1) = qDot(i);
             dataSave.rDotSave(i, j, method + 1) = rDot(i);
 
-            zdot(i) = V(i) * sin(gamma(i));
+            zdot(i) = V(i) * sin(flightPathAngle(i));
             bdot(i) = p(i) * cos(aoa(i)) * sec(ss(i)) + r(i) * sin(aoa(i)) * sec(ss(i));
             adot(i) = -p(i) * cos(aoa(i)) * tan(ss(i)) + q(i) - r(i) * sin(aoa(i)) * tan(ss(i));
             ssdot(i) = p(i) * sin(aoa(i)) - r(i) * cos(aoa(i));
@@ -337,7 +365,7 @@ for method = methods
             pDotFilt(i) = filter_discrete(p_in, p_mem,a,b);
             qDotFilt(i) = filter_discrete(q_in, q_mem,a,b);
             rDotFilt(i) = filter_discrete(r_in, r_mem,a,b);
-            gdotfilt(i) = filter_discrete(g_in, g_mem,a_g,b_g);
+            gammaDotFilt(i) = filter_discrete(g_in, g_mem,a_g,b_g);
             headingDotFilt(i) = filter_discrete(h_in, h_mem,a_g,b_g);
             dataSave.pDotFilt(i, j, method + 1) = rad2deg(pDotFilt(i));
             dataSave.qDotFilt(i, j, method + 1) = rad2deg(qDotFilt(i));
@@ -345,20 +373,26 @@ for method = methods
 
             % Store filter outputs into "memory" [out(n) out(n-1)]
             p_mem = [pDotFilt(i) p_mem(1)]; q_mem = [qDotFilt(i) q_mem(1)]; r_mem = [rDotFilt(i) r_mem(1)];
-            g_mem = [gdotfilt(i) g_mem(1)]; h_mem = [headingDotFilt(i) h_mem(1)];
+            g_mem = [gammaDotFilt(i) g_mem(1)]; h_mem = [headingDotFilt(i) h_mem(1)];
 
             % Update State Variables
             V(i+1) = V(i) + Vdot(i) * dt;
-            gamma(i+1) = gamma(i) + gammadot(i) * dt;
+            flightPathAngle(i+1) = flightPathAngle(i) + gammadot(i) * dt;
             heading(i+1) = heading(i) + headingDot(i) * dt;
             p(i+1) = p(i) + pDot(i) * dt;
             q(i+1) = q(i) + qDot(i) * dt;
             r(i+1) = r(i) + rDot(i) * dt;
             z(i+1) = z(i) + zdot(i) * dt;
+            pitch(i+1) = pitch(i) + q(i) * dt;
+            roll(i+1) = roll(i) + p(i) * dt;
             bank(i+1) = bank(i) + bdot(i) * dt;
             aoa(i+1) = aoa(i) + adot(i) * dt;
             ss(i+1) = ss(i) + ssdot(i) * dt;
             [lat(i+1), lon(i+i)] = propagateLatLon(lat(i), lon(i), V(i+1), heading(i+1), dt, constants);
+            rotNedFromBody(:,:,i+1)  = angle2dcm(heading(i+1),pitch(i+1),roll(i+1),'ZYX');
+            rotNedFromECEF(:,:,i+1)  = calcRotNedFromEcef(lat(i+1),lon(i+1));
+            rotBodyFromECEF(:,:,i+1) = rotNedFromBody(:,:,i+1)' * rotNedFromECEF(:,:,i+1);
+            chi(i+1) = calculateTrackAngle(V(i+1), lat(i+1), lon(i+1), heading(i+1), ss(i+1), constants, dt);
 
             % Simlog
             if i == (npoints-1)/4 || i == (npoints-1)/2 || i == 3 * (npoints-1)/4
@@ -372,14 +406,14 @@ for method = methods
             if alt <= 0
                 break
             end
-        end
+        end % end time loop
         dataSave.p(:, j, method + 1) = rad2deg(p);
         dataSave.q(:, j, method + 1) = rad2deg(q);
         dataSave.r(:, j, method + 1) = rad2deg(r);
         dataSave.bank(:, j, method + 1) = rad2deg(bank);
         dataSave.aoa(:, j, method + 1) = rad2deg(aoa);
         dataSave.heading(:, j, method + 1) = rad2deg(heading);
-        dataSave.gamma(:, j, method + 1) = rad2deg(gamma);
+        dataSave.flightPathAngle(:, j, method + 1) = rad2deg(flightPathAngle);
         dataSave.flightPathCmd(:, j, method + 1) = rad2deg(cmd_g(1,:));
         dataSave.headingCmd(:, j, method + 1) = rad2deg(cmd_g(2,:));
         dataSave.bankCmd(:, j, method + 1) = rad2deg(cmd_a(1,1:length(aoa)));
@@ -393,7 +427,7 @@ for method = methods
         dataSave.rDotCmd(:, j, method + 1) = rad2deg(flin(3,:));
         dataSave.sideslip(:, method + 1) = rad2deg(ss);
         dataSave.time(:,j, method + 1) = tvec;
-        fdplot = [fd(2,:);fd(3,:);fd(4,:);fd(5,:);fd(6,:);fd(7,:);fd(8,:);fd(1,:)];
+        fdplot = [flapDeflection(2,:);flapDeflection(3,:);flapDeflection(4,:);flapDeflection(5,:);flapDeflection(6,:);flapDeflection(7,:);flapDeflection(8,:);flapDeflection(1,:)];
         dataSave.fin1(:, j, method + 1) = fdplot(1,:);
         dataSave.fin2(:, j, method + 1) = fdplot(2,:);
         dataSave.fin3(:, j, method + 1) = fdplot(3,:);
@@ -415,11 +449,11 @@ for method = methods
         set(0, 'DefaultLineLineWidth', 2);
         set(groot,'defaultAxesXGrid','on')
         set(groot,'defaultAxesYGrid','on')
-    end
+    end % end method loop
 
 %         if ctrl.loopselect == 0
 %             figure('Name', ['Flight Path Angle and Heading' num2str(gyroNoiseDensity(j))]);
-%             subplot(2,1,1); plot(tvec(2:end-1),180/pi * cmd_g(1,2:end),tvec,gamma * 180/pi);
+%             subplot(2,1,1); plot(tvec(2:end-1),180/pi * cmd_g(1,2:end),tvec,flightPathAngle * 180/pi);
 %             ylabel('Flight Path Angle (deg)')
 %             legend('Guidance Command','Response')
 %             subplot(2,1,2); plot(tvec(2:end-1),180/pi * cmd_g(2,2:end),tvec,heading * 180/pi)
@@ -489,7 +523,7 @@ for method = methods
 %         % ylabel('rDot (deg/s^2)'); xlabel('Time(sec)'); grid on
 %
 %         % reorder flaps to match report numbering
-%         fdplot = [fd(2,:);fd(3,:);fd(4,:);fd(5,:);fd(6,:);fd(7,:);fd(8,:);fd(1,:)];
+%         fdplot = [flapDeflection(2,:);flapDeflection(3,:);flapDeflection(4,:);flapDeflection(5,:);flapDeflection(6,:);flapDeflection(7,:);flapDeflection(8,:);flapDeflection(1,:)];
 %         dataSave.finDeflectSave(:,:,j) = fdplot;
 %
 %         figure('Name', ['Flap Deflections ' num2str(gyroNoiseDensity(j))])
@@ -499,13 +533,13 @@ for method = methods
 %         xlabel('Time (Sec)')
 %         grid on
 
-end
+end % end of gyro noise loop
 
 
 % plotGyroNoise(dataSave)
 
 % figure
-% plot(tvec,gammadot,tvec,gdotfilt)
+% plot(tvec,gammadot,tvec,gammaDotFilt)
 % figure
 % plot(tvec,headingDot,tvec,headingDotFilt)
 %
@@ -546,7 +580,7 @@ for i = 1:length(methods)
         count = count + 1;
     end
 end
-plot(dataSave.time(:,j,i), dataSave.bankCmd(:,1,1), 'color', colors(count,:), 'linew', 2)
+plot(dataSave.time(:,j,i),F_scale_bodyataSave.bankCmd(:,1,1), 'color', colors(count,:), 'linew', 2)
 Legend{count} = 'Cmd';
 legend(Legend, 'location', 'northoutside')
 

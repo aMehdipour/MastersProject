@@ -1,0 +1,248 @@
+\documentclass[12pt]{article}
+
+% Load packages and define formatting options
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{times}
+\usepackage{indentfirst}
+
+\edef\restoreparindent{\parindent=\the\parindent\relax}
+\usepackage{parskip}
+\restoreparindent
+
+\usepackage{graphicx}
+\graphicspath{{./Figures/}}
+
+\usepackage{amsmath}
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+\bibliographystyle{aiaa}
+
+\geometry{margin=1in}
+\onehalfspacing
+
+\titleformat{\subsection}
+  {\normalfont\fontsize{14}{16}\selectfont}{\thesubsection}{1em}{}
+
+\setcounter{secnumdepth}{3}
+
+
+\begin{document}
+
+% Title Page
+\setcounter{page}{1}
+\pagenumbering{roman}
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+    {\fontsize{28}{32}\selectfont \textbf{Guidance Algorithm for an Atmospheric Re-entry Vehicle}}
+    \vfill
+    a project presented to \\
+    The faculty of the Department of Aerospace Engineering\\
+    San Jose State University\\
+    \vfill
+    in partial fulfillment of the requirements for the degree\\
+    {\fontsize{14}{16}\selectfont \emph{\textbf{Master of Science in Aerospace Engineering}}}\\
+    \vfill
+    by\\
+    {\fontsize{18}{20}\selectfont \textbf{Arash Mehdipour}}\\
+    February 2023\\
+    \vfill
+    {\fontsize{10}{12} \selectfont approved by}\\
+    Dr. Thomas Lombaerts\\
+    {\fontsize{10}{12} \selectfont Project Advisor}
+
+\end{titlepage}
+
+% Copyright Page
+\newpage
+\thispagestyle{empty}
+\mbox{}
+\vfill
+\begin{center}
+\emph{Copyright © [Year] by Your Name\\[0.2cm]
+All Rights Reserved}
+\end{center}
+\newpage
+
+% Abstract Page
+\setcounter{page}{3}
+\section*{\centering ABSTRACT}
+
+
+\newpage
+
+% Acknowledgements Page
+\section*{Acknowledgements}
+
+
+\newpage
+
+% Table of Contents
+\tableofcontents
+
+\newpage
+
+% List of Figures
+\listoffigures
+
+\newpage
+
+% List of Symbols
+\section*{List of Symbols and Acronyms}
+\vfill
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Symbols} & \textbf{Definition} & \textbf{Units} \\
+\hline
+Angle of Attack & $\alpha$ & radians\\
+\hline
+Roll (Bank) Angle & $\phi$ & radians\\
+\hline
+Side-slip Angle & $\beta$ & radians\\
+\hline
+Pitch Angle & $\theta$ & radians\\
+\hline
+Flight Path Angle & $\gamma$ & radians\\
+\hline
+Altitude & a & km\\
+\hline
+Velocity & V & km/s\\
+\hline
+& &\\
+\hline
+\textbf{Acronyms} & &\\
+\hline
+RV & Re-entry Vehicle & N/A\\
+\hline
+DEV & Deployable Entry Vehicle & N/A\\
+\hline
+ADEPT & Adaptable, Deployable, Entry and Placement Technology & N/A\\
+\hline
+LNA & Lifting Nano ADEPT & N/A\\
+\hline
+IMU & Inertial Measurement Unit & N/A\\
+\hline
+INS & Inertial Navigation System & N/A\\
+\hline
+GPS & Global Positioning System & N/A\\
+\hline
+NDI & Non-linear Dynamic Inversions & N/A\\
+\hline
+INDI & Incremental Non-linear Dynamic Inversion & N/A\\
+\hline
+LEO & Low Earth Orbit & N/A\\
+\hline
+\end{tabular}
+\end{center}
+\vfill
+
+\newpage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+% Main Body of Document
+\section{Introduction}
+
+\subsection{Motivation}
+ Atmospheric re-entry presents many challenges to the designers of a re-entry vehicle (RV). The high Mach numbers encountered during re-entry leads to large amounts of heat flux into the structure of the of the RV, which, if not properly accounted for, can cause catastrophic damage to the vehicle, leading to failure of the mission and, as seen with the space shuttle Columbia, even the death of the crew [1]. Since the heating of the RV is caused by the high Mach numbers typically seen during re-entry, there is also a need to quickly decelerate the vehicle to reduce the thermal loads encountered. For most RVs, this is typically achieved by using drag to decelerate the vehicle, which means that there is also a requirement for the sizing of the frontal area of the RV so that the desired deceleration can be met. The frontal area and deceleration requirements can cause the RV to be much larger than it needs to be in some cases, relative to the size of the payload it is delivering. Additionally, the larger area and nose radius of the windward surface helps with the thermal load management of the vehicle. This can not only lead to increased costs, but the larger RV produces packaging challenges to the launch vehicle, and can sometimes dictate that the launch vehicle be larger than it needs to be.
+
+To help combat this problem, a stowable heat shield that can be loaded in a compact manner and then deployed during re-entry was developed. These systems are referred to as Deployable Entry Vehicles (DEVs), and have the benefits of reduced volume and mass when compared traditional rigid heat shields. The reduced mass in conjuction with the ability to be stowed in a compact form, allows for larger and heavier payloads to be stored within the launch vehicle. Additionally, the DEV concept allows for a modular heat shield system that can be attached to many different forms of payloads, easing the design time and cost for payload manufacturers. The Adaptable, Deployable, Entry and Placement Technology (ADEPT) vehicle is a DEV designed by NASA which features a "mechanically deployable low-ballistic coefficient aeroshell" [2] and is the vehicle for which the guidance algorithm in this paper will be developed.
+
+Guided re-entry provides many benefits. In cases where the RV is returning to Earth, guided entry can allow the RV to land in a specified location, allowing the operators to easily and safely recover the RV and its payload. Additionally, this avoids safety hazards that an unguided RV may encounter, as exclusion zones around populated areas or other nation's territories can be programmed into the vehicle. In situations where a payload is sent to other celestial bodies, such as the Moon or Mars, a guided vehicle can land the payload close to a point of interest, reducing the time a rover or similar vehicle would need to travel before it can start collecting data. A guided RV is also able to control its speed through the atmosphere, thus having more control over the aerothermal loads the payload and heat shield experience, potentially leading to less ablative material being required for the heat shield and thus reducing cost and mass. The guidance system also provides the benefit of controlling the maximum deceleration rate, which is beneficial if the payload contains a human crew that needs to reach the surface safely. Therefore, a guidance algorithm is proposed for the ADEPT re-entry vehicle that will guide the RV to a specified location on the surface of a planet, while meeting constraints on maximum allowable deceleration and maximum temperature of the payload.
+
+\subsection{Literature Review}
+The proposed guidance system will be developed for a variant of ADEPT known as the SR-1. The SR-1 variant features a 0.7m deployable carbon fabric heatshield, that unfolds along 8 ribs that are positioned in a 70$^\circ$ symmetric pattern along the shield, similar to an umbrella [3]. The SR-1, seen on the left in Figure 1.1 below, was tested as the payload for a SpaceLoft XL SR sounding rocket launched from White Sands Missile Range in New Mexico. The SR-1 performed a chuteless descent and was able to recovered without incident thanks to the installation of a GPS receiver and C-band transponder, which are technologies that can be leveraged for Earth based missions. The inclusion of a GPS receiver means that GPS can also be used as an aiding source for the RV's navigation system for missions where a payload may need to be returned from orbit or from the Moon back down to Earth's surface safely. NASA is currently aiming to expand the ADEPT and DEV concepts to perform large payload delivery to Mars, Venus, and Saturn's moon, Titan.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.7\textwidth]{SR-1 LNA Specs LNA Vehicle Concept.png}
+  \caption{SR-1 and LNA vehicle features [3]}
+  \label{fig:SR1_LNA}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=1\textwidth]{Figures/SR-1 Dimensions Subsonic Dynamic Testing.png}
+  \caption{Dimensions of the SR-1 [4]}
+  \label{fig:SR1_Dims}
+\end{figure}
+
+\begin{table}
+\begin{center}
+\caption{SR-1 Mass Properties [4]}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Property} & \textbf{Value} & \textbf{Units} \\
+\hline
+Rib to rib diameter & 0.7 & m\\
+\hline
+Reference area & 0.3489 & m^2\\
+\hline
+Center of mass & [-109.80, 0.25, 0.25] & mm\\
+\hline
+Mass & 8.49 & kg\\
+\hline
+I_{xx} & 0.25 & kg$\cdot$m^2\\
+\hline
+I_{yy} & 0.1722 & kg$\cdot$m^2\\
+\hline
+I_{xx} & 0.1719 & kg$\cdot$m^2\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+The SR-1 vehicle was chosen as the development vehicle as a control system has already been developed for it in [5], as well as a CFD analysis to obtain all relevant aerodynamic values and coefficients. Control authority is provided through the use of 8 flaps that are placed at the end of each rib which can be seen in Figure 1.3, along with the body axis coordinate system definition for the vehicle. Pitch control is managed by flaps 2, 3, 6, 7 and yaw control is handled by flaps 1, 4, 5, and 8 [5]. Two control laws were developed for the SR-1 in [5], one law utilizing non-linear dynamic inversion (NDI), and the other using a modification of NDI known as incremental non-linear dynamic inversion (INDI). While NDI has the benefits of allowing linear control system architectures to be applied to non-linear systems, it relies heavily on the fidelity of the system model used. Therefore, modelling errors and uncertainties can negatively impact the robustness and effectiveness of the controller. The INDI method was developed to help reduce the negative effects of modelling errors on the controller, and is outlined in [6], where a INDI controller is developed and analyzed for a Cessna Citation Aircraft. Reference [7] shows that an INDI controller is still able to track an input command in the prescence of noise, when tuned correctly. A selection of test cases was run in [5] varying the initial Mach number from 20-30, and the initial altitude from 80-120km, and showed that the INDI and the NDI controllers have similar performance and are able to track pitch, angle of attack, and side-slip angle commands. A study was also performed in [5] where a 10\% error was applied to the input states of the controller, and it was shown that the INDI controller was more robust to modelling error in the form of a bias than the NDI controller.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.3\textwidth]{Figures/SR-1 Controls and Coordinate.png}
+  \caption{Attitude control flap layout of the SR-1 [5]}
+  \label{fig:SR1_Controls}
+\end{figure}
+
+Understanding the system's performance in the presence of measurement noise is important, as in reality there exists no perfect sensors. In reality, the attitude rates and accelerations would be provided to the guidance and control algorithms by means of an IMU, which is subject to various sources of error and noise. MEMS gyroscopes and accelerometers are subject to biases, angular and velocity random walks, scale factor and misalignment errors, and temperature effects, the last of which is especially pertinent to a re-entry vehicle [8]. The errors on the acceleration and angular rate measurements cause issues for the navigation system as well, as the gyroscope measurement errors are integrated once to find the body attitude angles, and the accelerometer errors are integrated twice when calculating position. Integration of IMU errors causes the state estimates to drift over time, making it difficult to accurately control the RV and follow a prescribed trajectory. Additionally, while not considered "noise" in the sense of measurement noise such as with the IMU, other forms of noise can arise from a lack of fidelity of the system model. Unaccounted for sources such as manufacturing errors, damage, actuator dynamics errors, and flexible body dynamics amount to noise in the measured states versus the modeled states and need to be accounted for as well. The aforementioned sources of noise are typically called process noise in Kalman filtering [9]. Properly accounting for IMU and process noise normally requires the development of a Kalman filter and necessitates the use of aiding data such as GPS or a star tracker system [9]. An analysis of the guidance and control algorithm's sensitivity to measurement noise and bias is presented later in this paper.
+
+Re-entry guidance began with the Apollo program, where a guidance algorithm was developed for a low-lifting capsule [10,11]. The Apollo algorithm consisted of two separate parts, one for the skip entry phase and one for the final entry phase. The algorithm used a pre-programmed trajectory and uses estimates of its own states to generate errors to the planned trajectory and make corrections. Since relatively poor computing performance was available in the days of the Apollo compared to today's standards, the algorithm relied mainly approximate, empirical, and analytical relationships with negatively impacted the performance of the guidance system [11]. The space shuttle used what is referred to as "second generation" guidance algorithms [11,12]. The shuttle, however, has a much higher lift to drag ratio than the ADEPT vehicles meaning that its guidance requirements are different due to the increased entry time caused by the larger L/D. When compared to Apollo, the space shuttle maintained a relatively small flight path angle, and defined a longitudinal trajectory using the acceleration due to drag and Earth-relative velocity when Mach numbers were high [11].
+
+More modern methods leverage the increased computing power we have available today, and generate trajectories and guidance solutions online. Predictor-corrector methods are outlined in [11,15-17] and have become a modern choice for guidance for low lift RVs. Predictor-corrector methods do not rely on pre-planned trajectories and can do no require a separate trajectory planner and tracking law. A downside to early predictor-corrector methods was that they were unable to handle inequality constraints such as with heating constraints or aerodynamic loads. Reference [11] proposes this downside as the reason why the method is common for low lift RVs, as the heating and load constraints are generally satisfied by the initial entry conditions for those cases. The paper proposes an augmented algorithm that utilizes the quasi-equilibrium glide condition (QEGC) [13] to allow for predictor-corrector methods to satisfy heating and load constraints. Analyses conducted on vehicles that have 1/3 of the L/D of the space shuttle (similar to ADEPT), as well as the same L/D, and three times the L/D show that the augmented predictor-corrector algorithm is able to satisfy inequality constraints for a variety of RV types [11,13]. Even more modern methods, such as the one outlined in [18] leverage neural networks and machine learning to find patterns in re-entry data and generate commands based on the data.
+
+Online generation of trajectories offers many benefits over traditional guided re-entry algorithms. Removing the dependency of a pre-determined trajectory allows the RV to respond dynamically and in real time to changing mission objectives or conditions. If the mission must be aborted, for whatever reason, the RV will be able to generate a new trajectory in real time to follow commanded abort parameters. Similarly, if the landing location of the RV needs to be changed mid-flight, the new location need simply to be told to the RV and a new trajectory to that location can be generated online. This also facilitates the use of dynamic exclusion zones and allows the vehicle to respond to otherwise unaccounted for situations. Therefore, an augmented predictor-corrector guidance algorithm such as the one outlined in [11,15-17] will be developed for the ADEPT SR-1. Sample initial entry conditions for a lunar return and an LEO return from [20] as initial test points. A Martian re-entry will be analyzed later in this paper. The heating constraints are defined in [3] as a maximum allowable of 200$\frac{W}{cm^2}$ and 4.5$\frac{J}{cm^2}$ for heat flux and heat load respectively. The proposed guidance algorithm will have to satisfy these constraints for various re-entry initial conditions and when alternate landing locations are specified mid-course. According to [21], humans can sustain a maximum of 12 gees of deceleration for short periods at a time, so the algorithm will also have to meet this constraint for manned missions.
+
+\begin{table}
+\begin{center}
+\caption{ADEPT Sample Trajectories [20]}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Property} & \textbf{Lunar Return} & \textbf{LEO Return} &  \textbf{Units}\\
+\hline
+Altitude & 122 & 122 & km\\
+\hline
+Velocity & 11.0 & 7.89 & km/s\\
+\hline
+$\gamma$ & -5.5 & -6.8 & degrees\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=1\textwidth]{Figures/different entry trajectories 11.png}
+  \caption{Plots illustrating the different re-entry trajectories seen by a low-lift vehicle (CEV), a vehicle similar to the space shuttle (X-33), and a high L/S hypersonic glide vehicle (CAV-H) [11]}
+  \label{fig:Reentry_Profiles}
+\end{figure}
+
+\subsection{Project Proposal}
+The objective of this study is to develop a guidance algorithm for the ADEPT SR-1, building upon the control law developed in [5], that will allow the vehicle to be guided to a specified point on the surface, while meeting constraints on accuracy, heating load, and maximum deceleration. The algorithm will use modern augmented predictor-corrector methods found in [11,13,15-17] to generate trajectories online, and will be able to accept alternative landing point commands and guide itself to the new point. Additionally, a study will be conducted to assess the sensitivity of the guidance and control algorithms to measurement and process noise, and a filter constructed to account for the noise, if required.
+
+\subsection{Methodology}
+Mathematical models of the Earth and Mars atmospheres are constructed, as well as a method for calculating the chemical composition of the atmosphere based on the Mach number of the RV. This will facilitate the accurate calculation of the heat flux entering the RV and will be used as an input in the heat flux inequality constraint. Coordinate systems will be developed for both the Martian entry and the Earth return cases, to allow for navigation information to be fed into the guidance algorithm. An augmented predictor-corrector guidance law will be developed and tested in both entry environments, and its performance compared to the traditional method of pre-planned trajectories. Finally, a noise sensitivity analysis will be conducted for the controller and guidance algorithm, and a filter developed if necessary.
+
+\nocite{*}
+\bibliography{sample}
+\end{document}

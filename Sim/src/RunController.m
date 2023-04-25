@@ -26,41 +26,42 @@ Lf = f_aero.Lf; Sf = f_aero.Sf;
 
 %% Guidance
 % Compute error terms and output required derivatives
-errorGammaHeading      = cmd_g - [g; heading];
+errorGammaHeading      = cmd_g - [flightPathAngle; heading];
 errorDotGammaHeading   = (errorGammaHeading - errorLastGammaHeading) / ts;
 errorIntegGammaHeading = errorIntegGammaHeading + errorGammaHeading * ts;
 
 v_g = kd_g * errorDotGammaHeading + kp_g * errorGammaHeading + ki_g * errorIntegGammaHeading;
 
 % Filter the control signal
-vgfilt = filter_discrete([v_g(1) gmem(1,:)], gfmem(1,:),a_g,b_g);
-vhfilt = filter_discrete([v_g(2) gmem(2,:)], gfmem(2,:),a_g,b_g);
+controlSignalGammaFilt   = filter_discrete([v_g(1) gmem(1,:)], gfmem(1,:),a_g,b_g);
+controlSignalHeadingFilt = filter_discrete([v_g(2) gmem(2,:)], gfmem(2,:),a_g,b_g);
 
-gflin = [vgfilt(end);vhfilt(end)];
+gflin = [controlSignalGammaFilt(end);controlSignalHeadingFilt(end)];
 
-greq = gflin(1); hreq = gflin(2);
+gammaReq = gflin(1); headingReq = gflin(2);
 
 fbias  = Ffit(1:2);
 fslope = Ffit(3:4) * 180/pi; % convert from N/deg to N/rad
 
-    % Dynamic inversion
-    if method == 0 % NDI
-        tmp(1,1)  = constants.MASS * V * greq + (gz - (constants.MASS * V^2 / z)) * cos(g) - Lf * cos(bank) + Sf * sin(bank);
-        tmp(2,1)  = constants.MASS * V * cos(g) * hreq - Lf * sin(bank) - Sf * cos(bank);
-        Brot      = [cos(bank) -sin(bank); sin(bank) cos(bank)];
-        forcereqs = inv(Brot) * tmp; % [Lcs;Scs]
+% Dynamic inversion
+if method == 0 % NDI
+    tmp(1,1)  = constants.MASS * V * gammaReq + (gz - (constants.MASS * V^2 / z)) * cos(flightPathAngle) - Lf * cos(bank) + Sf * sin(bank);
+    tmp(2,1)  = constants.MASS * V * cos(flightPathAngle) * headingReq - Lf * sin(bank) - Sf * cos(bank);
+    Brot      = [cos(bank) -sin(bank); sin(bank) cos(bank)];
+    forcereqs = inv(Brot) * tmp; % [Lcs;Scs]
 
-        cmd_a = (forcereqs - fbias') ./ fslope';
-        cmd_a = [0;cmd_a];
-    elseif method == 1 % INDI
-        tmp(1,1)   = constants.MASS * V * (greq - gdot);
-        tmp(2,1)   = constants.MASS * V * cos(g) * (hreq - headingDot);
-        Brot       = [cos(bank) -sin(bank); sin(bank) cos(bank)];
-        dforcereqs = inv(Brot) * tmp; % [Lcs;Scs]
+    cmd_a = (forcereqs - fbias') ./ fslope';
+    cmd_a = [0;cmd_a];
 
-        dcmd_a = (dforcereqs) ./ fslope';
-        cmd_a = [0; aoa; ssl] + [0; dcmd_a];
-    end
+elseif method == 1 % INDI
+    tmp(1,1)   = constants.MASS * V * (gammaReq - gammaDot);
+    tmp(2,1)   = constants.MASS * V * cos(flightPathAngle) * (headingReq - headingDot);
+    Brot       = [cos(bank) -sin(bank); sin(bank) cos(bank)];
+    dforcereqs = inv(Brot) * tmp; % [Lcs;Scs]
+
+    dcmd_a = (dforcereqs) ./ fslope';
+    cmd_a = [0; aoa; ssl] + [0; dcmd_a];
+end
 
 % Angle Limiter
 angvec = [bank; aoa; ssl];
@@ -68,7 +69,7 @@ for i = 1:3
     if abs(cmd_a(i)) > anglim
         cmd_a(i) = anglim * sign(cmd_a(i));
 
-        % Integreator anti-windup logic
+        % Integrator anti-windup logic
         if i == 2 || i == 3 %implement on pitch and yaw axes
             if abs(angvec(i)) >= anglim - 0.1 * pi/180 % if
                 errorIntegGammaHeading(i-1) = 0;
@@ -119,19 +120,19 @@ flin = [vpfilt(end);vqfilt(end);vrfilt(end)];
 
 % Output filtered signals to dynamic inversion
 
-% preq = 0; qreq = 0; rreq =0;
+% pReq = 0; qReq = 0; rReq =0;
 % Dynamic Inversion
 if method == 0 % NDI
-    preq = vlin(1); qreq = vlin(2); rreq = vlin(3);
-    Lmcs = Ixx * preq + Izz * r * q - Iyy * q * r - Lmv; % ignoring off-axis inertia (all zeros)
-    Mmcs = Iyy * qreq + Ixx * p * r - Izz * p * r - Mmv;
-    Nmcs = Izz * rreq - Ixx * p * q + Iyy * p * q - Nmv;
+    pReq = vlin(1); qReq = vlin(2); rReq = vlin(3);
+    Lmcs = Ixx * pReq + Izz * r * q - Iyy * q * r - Lmv; % ignoring off-axis inertia (all zeros)
+    Mmcs = Iyy * qReq + Ixx * p * r - Izz * p * r - Mmv;
+    Nmcs = Izz * rReq - Ixx * p * q + Iyy * p * q - Nmv;
     v = [Lmcs; Mmcs; Nmcs] - bias;
 elseif method == 1 % INDI
-    preq = flin(1); qreq = flin(2); rreq = flin(3);
-    wreq = [preq; qreq; rreq];
-    wdot = [pDot; qDot; rDot];
-    tmp2 = constants.INERTIA * (wreq - wdot);
+    pReq = flin(1); qReq = flin(2); rReq = flin(3);
+    wReq = [pReq; qReq; rReq];
+    wDot = [pDot; qDot; rDot];
+    tmp2 = constants.INERTIA * (wReq - wDot);
     Lmcs = tmp2(1);
     Mmcs = tmp2(2);
     Nmcs = tmp2(3);
@@ -160,11 +161,11 @@ if method == 0
     [fc,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam_wls);
 
 elseif method == 1
-    dud = zeros(8,1) - fd;
+    dud = zeros(8,1) - flapDeflection;
 
     for i = 1:8
-        dumin(i) = max([-constants.FLAP_LIMIT-fd(i) -maxdeflect]);
-        dumax(i) = min([constants.FLAP_LIMIT-fd(i) maxdeflect]);
+        dumin(i) = max([-constants.FLAP_LIMIT-flapDeflection(i) -maxdeflect]);
+        dumax(i) = min([constants.FLAP_LIMIT-flapDeflection(i) maxdeflect]);
         if dud(i) < dumin(i)
             dud(i) = dumin(i);
         elseif dud(i) > dumax(i)

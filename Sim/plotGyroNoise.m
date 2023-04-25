@@ -11,7 +11,7 @@ function plotGyroNoise(data)
     hold on
     for i = 1:numNoise
         plot(data.time(2:end-1), data.flightPathCmd(:,:,i))
-        plot(data.time, data.gamma(:,i))
+        plot(data.time, data.flightPathAngle(:,i))
     end
 
 
