@@ -78,7 +78,10 @@ ctrl.gam_wls = 1e6;
 
 
 for method = methods
+    flagFirstPass1 = 0;
+    flagFirstPass2 = 0;
     if method == 1 % implement filter for INDI
+
         % Angular accel filter
         [b,a] = butter(1,0.5);
         ctrl.filt_disc = tf(b,a,ctrl.ts);
@@ -129,7 +132,7 @@ for method = methods
     %% Set up state variables
     % Dynamics
     V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
-    flightPathAngle = zeros(npoints,1); gammadot = flightPathAngle; % flight path angle (rad)
+    flightPathAngle = zeros(npoints,1); gammaDot = flightPathAngle; % flight path angle (rad)
     heading = zeros(npoints,1); headingDot = heading; % headinging angle (rad)
     chi = zeros(npoints,1); chidot = chi; % track angle (rad)
     p = zeros(npoints,1); pDot = p; % angular velocity about x axis (rad/s)
@@ -200,7 +203,7 @@ for method = methods
     tic
     for j =  1:length(gyroNoiseDensity)
         V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
-        flightPathAngle = zeros(npoints,1); gammadot = flightPathAngle; % flight path angle (rad)
+        flightPathAngle = zeros(npoints,1); gammaDot = flightPathAngle; % flight path angle (rad)
         heading = zeros(npoints,1); headingDot = heading; % headinging angle (rad)
         chi = zeros(npoints,1); chidot = chi; % track angle (rad)
         p = zeros(npoints,1); pDot = p; % angular velocity about x axis (rad/s)
@@ -280,9 +283,17 @@ for method = methods
                 % NOTE: The original implementation only set the flightPathAngle
                 % command to the inital angle for all time.
                 if i * dt >= 2 && ctrl.loopselect == 0
-                    ctrl.cmd_g = [0 ; 0];
+                    ctrl.cmd_g = [flightPathAngle(1)-deg2rad(1) ; 0];
+                    if flagFirstPass1 == 0
+                        sprintf('The flight path angle command is %.3f', rad2deg(ctrl.cmd_g(1)))
+                        flagFirstPass1 = flagFirstPass1 + 1;
+                    end
                 else
                     ctrl.cmd_g = [flightPathAngle(1) ; 0];
+                    if flagFirstPass2 == 0
+                        sprintf('The flight path angle command is %.3f', rad2deg(ctrl.cmd_g(1)))
+                        flagFirstPass2 = flagFirstPass2 + 1;
+                    end
                 end
 
                 %         cmd_g(1,1) = -5.5 * pi/180;
@@ -340,7 +351,7 @@ for method = methods
 
             % Compute State Derivatives
             Vdot(i) = -(gz/constants.MASS) * sin(flightPathAngle(i)) - (1/constants.MASS) * D;
-            gammadot(i) = (-gz/(constants.MASS * V(i)) + (V(i)/z(i))) * cos(flightPathAngle(i)) + 1/(constants.MASS * V(i)) * (L * cos(bank(i)) - S * sin(bank(i)));
+            gammaDot(i) = (-gz/(constants.MASS * V(i)) + (V(i)/z(i))) * cos(flightPathAngle(i)) + 1/(constants.MASS * V(i)) * (L * cos(bank(i)) - S * sin(bank(i)));
             headingDot(i) = (1/(constants.MASS * V(i) * cos(flightPathAngle(i)))) * (L * sin(bank(i)) + S * cos(bank(i)));
 
             gyro = cross([p(i); q(i); r(i)],constants.INERTIA * [p(i); q(i); r(i)]); %gyroscopic torque (Nm)
@@ -360,7 +371,7 @@ for method = methods
             %Filter derivatives for INDI processing
             % Store filter inputs [in(n) in(n-1) in(n-2)]
             p_in = [pDot(i) p_in(1:2)]; q_in = [qDot(i) q_in(1:2)]; r_in = [rDot(i) r_in(1:2)];
-            g_in = [gammadot(i) g_in(1:2)]; h_in = [headingDot(i) h_in(1:2)];
+            g_in = [gammaDot(i) g_in(1:2)]; h_in = [headingDot(i) h_in(1:2)];
             % Execute filter function
             pDotFilt(i) = filter_discrete(p_in, p_mem,a,b);
             qDotFilt(i) = filter_discrete(q_in, q_mem,a,b);
@@ -377,7 +388,7 @@ for method = methods
 
             % Update State Variables
             V(i+1) = V(i) + Vdot(i) * dt;
-            flightPathAngle(i+1) = flightPathAngle(i) + gammadot(i) * dt;
+            flightPathAngle(i+1) = flightPathAngle(i) + gammaDot(i) * dt;
             heading(i+1) = heading(i) + headingDot(i) * dt;
             p(i+1) = p(i) + pDot(i) * dt;
             q(i+1) = q(i) + qDot(i) * dt;
@@ -414,6 +425,7 @@ for method = methods
         dataSave.aoa(:, j, method + 1) = rad2deg(aoa);
         dataSave.heading(:, j, method + 1) = rad2deg(heading);
         dataSave.flightPathAngle(:, j, method + 1) = rad2deg(flightPathAngle);
+        dataSave.gammaDot(:, j, method + 1) = rad2deg(gammaDot);
         dataSave.flightPathCmd(:, j, method + 1) = rad2deg(cmd_g(1,:));
         dataSave.headingCmd(:, j, method + 1) = rad2deg(cmd_g(2,:));
         dataSave.bankCmd(:, j, method + 1) = rad2deg(cmd_a(1,1:length(aoa)));
@@ -539,7 +551,7 @@ end % end of gyro noise loop
 % plotGyroNoise(dataSave)
 
 % figure
-% plot(tvec,gammadot,tvec,gammaDotFilt)
+% plot(tvec,gammaDot,tvec,gammaDotFilt)
 % figure
 % plot(tvec,headingDot,tvec,headingDotFilt)
 %
@@ -580,7 +592,7 @@ for i = 1:length(methods)
         count = count + 1;
     end
 end
-plot(dataSave.time(:,j,i),F_scale_bodyataSave.bankCmd(:,1,1), 'color', colors(count,:), 'linew', 2)
+plot(dataSave.time(:,j,i),dataSave.bankCmd(:,1,1), 'color', colors(count,:), 'linew', 2)
 Legend{count} = 'Cmd';
 legend(Legend, 'location', 'northoutside')
 
@@ -621,6 +633,41 @@ if ~exist('/home/amehdipour/repos/MastersProject/Sim/Plots/GammaSweep/', 'dir')
 end
 export_fig(['/home/amehdipour/repos/MastersProject/Sim/Plots/GammaSweep/Angles' mode '.fig'])
 export_fig(['/home/amehdipour/repos/MastersProject/Sim/Plots/GammaSweep/Angles' mode '.png'])
+
+%% Flight Path Angle and Heading Plots
+figure('Name', "Gamma and Heading")
+tiledlayout(2,1)
+nexttile
+hold on
+count = 1;
+for i = 1:length(methods)
+    for j = 1:length(gyroNoiseDensity)
+        plot(dataSave.time(:,j,i), dataSave.flightPathAngle(:,j,i), 'linew', 2, 'color', colors(count,:), 'linestyle', linS{i})
+        Legend{count} = ['Noise density ' num2str(gyroNoiseDensity(j)) ' ' controllers{i}];
+        ylabel('Flight Path Angle (deg)')
+        xlabel('Time (s)')
+        count = count + 1;
+    end
+end
+plot(dataSave.time(1:end-1,j,i),dataSave.flightPathCmd(:,1,1), 'color', colors(count,:), 'linew', 2)
+Legend{count} = 'Gamma Cmd';
+legend(Legend, 'location', 'northoutside')
+
+nexttile
+hold on
+count = 1;
+for i = 1:length(methods)
+    for j = 1:length(gyroNoiseDensity)
+        plot(dataSave.time(:,j,i), dataSave.heading(:,j,i), 'linew', 2, 'color', colors(count,:), 'linestyle', linS{i})
+        Legend{count} = ['Noise density ' num2str(gyroNoiseDensity(j)) ' ' controllers{i}];
+        ylabel('Heading (deg)')
+        xlabel('Time (s)')
+        count = count + 1;
+    end
+end
+plot(dataSave.time(1:end-1,j,i), dataSave.headingCmd(:,1,1), 'color', colors(count,:), 'linew', 2)
+Legend{count} = 'Heading Cmd';
+% legend(Legend, 'location', 'eastoutside')
 
 %% Angular Rate Plots
 figure('Name', "Angle Rates")
