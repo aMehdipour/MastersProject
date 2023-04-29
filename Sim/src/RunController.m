@@ -140,6 +140,43 @@ elseif method == 1 % INDI
 end
 
 
+% %% Control Allocation
+% umin = zeros(8,1); dumin = zeros(8,1);
+% umax = zeros(8,1); dumax = zeros(8,1);
+% if method == 0
+%     ud = zeros(8,1);
+
+%     for i = 1:8
+%         umin(i) = max([-constants.FLAP_LIMIT fclast(i) - maxdeflect]);
+%         umax(i) = min([constants.FLAP_LIMIT fclast(i) + maxdeflect]);
+% %         umin(i) = -20;
+% %         umax(i) = 20;
+%         if ud(i) < umin(i)
+%             ud(i) = umin(i);
+%         elseif ud(i) > umax(i)
+%             ud(i) = umax(i);
+%         end
+%     end
+%     % implement weighted least squares
+%     [fc,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam_wls);
+
+% elseif method == 1
+%     dud = zeros(8,1) - flapDeflection;
+
+%     for i = 1:8
+%         dumin(i) = max([-constants.FLAP_LIMIT-flapDeflection(i) -maxdeflect]);
+%         dumax(i) = min([constants.FLAP_LIMIT-flapDeflection(i) maxdeflect]);
+%         if dud(i) < dumin(i)
+%             dud(i) = dumin(i);
+%         elseif dud(i) > dumax(i)
+%             dud(i) = dumax(i);
+%         end
+%     end
+%     % implement weighted least squares
+%     [dfc,W,iter] = wls_alloc(B,v,dumin,dumax,Wv,Wu,dud);
+%     fc = fclast + dfc;
+% end
+
 %% Control Allocation
 umin = zeros(8,1); dumin = zeros(8,1);
 umax = zeros(8,1); dumax = zeros(8,1);
@@ -149,16 +186,14 @@ if method == 0
     for i = 1:8
         umin(i) = max([-constants.FLAP_LIMIT fclast(i) - maxdeflect]);
         umax(i) = min([constants.FLAP_LIMIT fclast(i) + maxdeflect]);
-%         umin(i) = -20;
-%         umax(i) = 20;
         if ud(i) < umin(i)
             ud(i) = umin(i);
         elseif ud(i) > umax(i)
             ud(i) = umax(i);
         end
     end
-    % implement weighted least squares
-    [fc,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam_wls);
+    % implement weighted least squares with PCH
+    [fc,W,iter] = wls_alloc_pch(B,v,umin,umax,Wv,Wu,ud,gam_wls,(umin+umax)/2, zeros(length(umin),1), 100, 1e-6, 5);
 
 elseif method == 1
     dud = zeros(8,1) - flapDeflection;
@@ -172,8 +207,8 @@ elseif method == 1
             dud(i) = dumax(i);
         end
     end
-    % implement weighted least squares
-    [dfc,W,iter] = wls_alloc(B,v,dumin,dumax,Wv,Wu,dud);
+    % implement weighted least squares with PCH
+    [dfc,W,iter] = wls_alloc_pch(B,v,dumin,dumax,Wv,Wu,dud,gam_wls,(dumin+dumax)/2, zeros(length(dumin),1), 100, 1e-6, 5);
     fc = fclast + dfc;
 end
 

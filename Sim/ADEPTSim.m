@@ -31,7 +31,7 @@ rng(69); % Set the RNG seed for reproducability
 
 %% Sim Settings
 dt = 1/500;
-tend = 5;
+tend = 20;
 tvec = 0:dt:tend;
 npoints = length(tvec); % Number of timesteps
 CFD.aeroScalingFactor = 1; % Scaling factor for aero variables to add scaling error
@@ -202,49 +202,49 @@ for method = methods
     %% Execute Computations
     tic
     for j =  1:length(gyroNoiseDensity)
-        V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
-        flightPathAngle = zeros(npoints,1); gammaDot = flightPathAngle; % flight path angle (rad)
-        heading = zeros(npoints,1); headingDot = heading; % headinging angle (rad)
-        chi = zeros(npoints,1); chidot = chi; % track angle (rad)
-        p = zeros(npoints,1); pDot = p; % angular velocity about x axis (rad/s)
-        q = zeros(npoints,1); qDot = q; % angular velocity about y axis (rad/s)
-        r = zeros(npoints,1); rDot = r; % angular velocity about z axis (rad/s)
-        pDotFilt = r; qDotFilt = r; rDotFilt = r;
-        gammaDotFilt = r; headingDotFilt = r;
-        rotBodyFromECEF = zeros(3,3,npoints);
-        rotNedFromBody  = zeros(3,3,npoints);
-        rotNedFromECEF  = zeros(3,3,npoints);
+        % V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
+        % flightPathAngle = zeros(npoints,1); gammaDot = flightPathAngle; % flight path angle (rad)
+        % heading = zeros(npoints,1); headingDot = heading; % headinging angle (rad)
+        % chi = zeros(npoints,1); chidot = chi; % track angle (rad)
+        % p = zeros(npoints,1); pDot = p; % angular velocity about x axis (rad/s)
+        % q = zeros(npoints,1); qDot = q; % angular velocity about y axis (rad/s)
+        % r = zeros(npoints,1); rDot = r; % angular velocity about z axis (rad/s)
+        % pDotFilt = r; qDotFilt = r; rDotFilt = r;
+        % gammaDotFilt = r; headingDotFilt = r;
+        % rotBodyFromECEF = zeros(3,3,npoints);
+        % rotNedFromBody  = zeros(3,3,npoints);
+        % rotNedFromECEF  = zeros(3,3,npoints);
 
-        % Kinematics
-        z     = zeros(npoints,1); zdot = z; % orbital radius (m)
-        lat   = zeros(npoints,1); latdot = lat; % latitude (rad)
-        lon   = zeros(npoints,1); londot = lon; % longitude (rad)
-        bank  = zeros(npoints,1); bdot = bank; % bank angle (rad)
-        aoa   = zeros(npoints,1); adot = aoa; % angle of attack (rad)
-        ss    = zeros(npoints,1); ssdot = ss; % sideslip angle (rad)
-        pitch = zeros(npoints,1);
-        roll  = zeros(npoints,1);
+        % % Kinematics
+        % z     = zeros(npoints,1); zdot = z; % orbital radius (m)
+        % lat   = zeros(npoints,1); latdot = lat; % latitude (rad)
+        % lon   = zeros(npoints,1); londot = lon; % longitude (rad)
+        % bank  = zeros(npoints,1); bdot = bank; % bank angle (rad)
+        % aoa   = zeros(npoints,1); adot = aoa; % angle of attack (rad)
+        % ss    = zeros(npoints,1); ssdot = ss; % sideslip angle (rad)
+        % pitch = zeros(npoints,1);
+        % roll  = zeros(npoints,1);
 
-        % Telemetry
-        vlin = zeros(3,npoints-1);
-        flin = zeros(3,npoints-1);
-        if ~exist('cmd_a'); cmd_a = zeros(3,npoints); end
-        cmd_r = zeros(3,npoints-1); % [p, q, r]
-        cmd_g = zeros(2,npoints-1); % [flightPathAngle; heading]
+        % % Telemetry
+        % vlin = zeros(3,npoints-1);
+        % flin = zeros(3,npoints-1);
+        % if ~exist('cmd_a'); cmd_a = zeros(3,npoints); end
+        % cmd_r = zeros(3,npoints-1); % [p, q, r]
+        % cmd_g = zeros(2,npoints-1); % [flightPathAngle; heading]
 
-        %% Initial Conditions
-        M = 30; % Mach number (dless) and speed of sound (m/s)
-        V(1) = M * c;
-        heading(1) = 0;
-        p(1) = 0; q(1) = 0; r(1) = 0;
-        alt = 100000; %118000;
-        alt_init = alt; % save initial altitude for filename
-        z(1) = alt + constants.RADIUS_EQ;
-        lat(1) = deg2rad(37.3352); lon(1) = deg2rad(121.8811);
-        bank(1) = 0; aoa(1) = 0; ss(1) = 0;
+        % %% Initial Conditions
+        % M = 30; % Mach number (dless) and speed of sound (m/s)
+        % V(1) = M * c;
+        % heading(1) = 0;
+        % p(1) = 0; q(1) = 0; r(1) = 0;
+        % alt = 100000; %118000;
+        % alt_init = alt; % save initial altitude for filename
+        % z(1) = alt + constants.RADIUS_EQ;
+        % lat(1) = deg2rad(37.3352); lon(1) = deg2rad(121.8811);
+        % bank(1) = 0; aoa(1) = 0; ss(1) = 0;
 
-        flapDeflection = zeros(8,npoints); % flap deflection angles (deg)
-        fc = zeros(8,1);
+        % flapDeflection = zeros(8,npoints); % flap deflection angles (deg)
+        % fc = zeros(8,1);
 
         % controller states
         ctrl.errorLastGammaHeading = [0; 0];
@@ -282,8 +282,9 @@ for method = methods
                 % Commands (Input selected based on ctrl.loopselect)
                 % NOTE: The original implementation only set the flightPathAngle
                 % command to the inital angle for all time.
-                if i * dt >= 2 && ctrl.loopselect == 0
-                    ctrl.cmd_g = [flightPathAngle(1)-deg2rad(1) ; 0];
+                if i * dt >= 2
+                    cmd_slope = deg2rad(0.02);
+                    ctrl.cmd_g = [flightPathAngle(1)-cmd_slope * i * dt + 2 * cmd_slope; 0];
                     if flagFirstPass1 == 0
                         sprintf('The flight path angle command is %.3f', rad2deg(ctrl.cmd_g(1)))
                         flagFirstPass1 = flagFirstPass1 + 1;
@@ -320,13 +321,13 @@ for method = methods
                     %               ctrl.cmd_a = cmd_a(:,i);
                 end
 
-                if i * dt > 0.5 && i * dt < 1.5
-                    ctrl.cmd_r = [0; 1; 0] * pi/180;
-                elseif i * dt > 0.5
-                    ctrl.cmd_r = [0; 1; 1] * pi/180;
-                else
-                    ctrl.cmd_r = [0; 0; 0];
-                end
+                % if i * dt > 0.5 && i * dt < 1.5
+                %     ctrl.cmd_r = [0; 1; 0] * pi/180;
+                % elseif i * dt > 0.5
+                %     ctrl.cmd_r = [0; 1; 1] * pi/180;
+                % else
+                %     ctrl.cmd_r = [0; 0; 0];
+                % end
 
                 % Execute control law
                 st_sensor = st;

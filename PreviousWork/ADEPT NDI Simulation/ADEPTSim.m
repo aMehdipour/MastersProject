@@ -115,7 +115,7 @@ ctrl.gfmem = zeros(2,2);
 % Dynamics
 V = zeros(npoints,1); Vdot = V;% vehicle velocity (m/s)
 gamma = zeros(npoints,1); gammadot = gamma; % flight path angle (rad)
-head = zeros(npoints,1); hdot = head; % heading angle (rad)
+heading = zeros(npoints,1); hdot = heading; % headinging angle (rad)
 p = zeros(npoints,1); pdot = p; % angular velocity about x axis (rad/s)
 q = zeros(npoints,1); qdot = q; % angular velocity about y axis (rad/s)
 r = zeros(npoints,1); rdot = r; % angular velocity about z axis (rad/s)
@@ -139,7 +139,7 @@ cmd_g = zeros(2,npoints-1);
 
 %% Initial Conditions
 M = 30; % Mach number (dless) and speed of sound (m/s)
-V(1) = M*c; gamma(1) = -5.5*pi/180; head(1) = 0;
+V(1) = M*c; gamma(1) = -5.5*pi/180; heading(1) = 0;
 p(1) = 0; q(1) = 0; r(1) = 0;
 alt = 100000; %118000;
 alt_init = alt; % save initial altitude for filename
@@ -181,23 +181,23 @@ for i = 1:npoints-1
         [v_aero,B,bias,f_aero,Ffit] = ControllerAero(V(i),rho,aoa(i),ss(i),bank(i),fd(:,i-1),CFD);
 
         % Save state variables into input structure
-        st = struct('g',gamma(i),'V',V(i),'head',head(i),'p',p(i),'q',q(i),'r',r(i),'bank',bank(i),'rho',rho,'fd',fd(:,i-1),...
+        st = struct('g',gamma(i),'V',V(i),'heading',heading(i),'p',p(i),'q',q(i),'r',r(i),'bank',bank(i),'rho',rho,'fd',fd(:,i-1),...
             'gdot',gdotfilt(i-1),'z',z(i-1),'hdot',hdotfilt(i-1),'pdot',pdotfilt(i-1),'qdot',qdotfilt(i-1),'rdot',rdotfilt(i-1),...
             'aoa',aoa(i),'ssl',ss(i),'gz',gz);
 
         % Commands (Input selected based on ctrl.loopselect)
-        ctrl.cmd_g = [-5.5;0]*pi/180; % p, q, r
-%         cmd_g(1,1) = -5.5*pi/180;
-%         ctrl.cmd_g = [cmd_g(1,i-1);0] + [0.75*V(i)/z(i)*cos(gamma(i));0]*dt;
-%         cmd_slope = 0.02*pi/180; %rad/sec
-%         if i*dt < 10
-%             ctrl.cmd_g = [gamma(1); head(1)] - cmd_slope*[i*dt; 0];
-%         else
-%             ctrl.cmd_g = [cmd_g(1,i-1); head(1)] + cmd_slope*[0; i*dt-10];
-%         end
-%         if i == 2
-%             ctrl.cmd_a = [0; aoa(2); ss(2)];
-%         end
+        % ctrl.cmd_g = [-5.5;0]*pi/180; % p, q, r
+        cmd_g(1,1) = -5.5*pi/180;
+        ctrl.cmd_g = [cmd_g(1,i-1);0] + [0.75*V(i)/z(i)*cos(gamma(i));0]*dt;
+        cmd_slope = 0.02*pi/180; %rad/sec
+        if i*dt < 10
+            ctrl.cmd_g = [gamma(1); heading(1)] - cmd_slope*[i*dt; 0];
+        else
+            ctrl.cmd_g = [cmd_g(1,i-1); heading(1)] + cmd_slope*[0; i*dt-10];
+        end
+        if i == 2
+            ctrl.cmd_a = [0; aoa(2); ss(2)];
+        end
 
         if ctrl.loopselect == 1
             if i*dt > 1 && i*dt < 3
@@ -269,7 +269,7 @@ for i = 1:npoints-1
     % Update State Variables
     V(i+1) = V(i) + Vdot(i)*dt;
     gamma(i+1) = gamma(i) + gammadot(i)*dt;
-    head(i+1) = head(i) + hdot(i)*dt;
+    heading(i+1) = heading(i) + hdot(i)*dt;
     p(i+1) = p(i) + pdot(i)*dt;
     q(i+1) = q(i) + qdot(i)*dt;
     r(i+1) = r(i) + rdot(i)*dt;
@@ -308,7 +308,7 @@ if ctrl.loopselect == 0
     subplot(2,1,1); plot(tvec(2:end-1),180/pi*cmd_g(1,2:end),tvec,gamma*180/pi);
     ylabel('Flight Path Angle (deg)')
     legend('Guidance Command','Response')
-    subplot(2,1,2); plot(tvec(2:end-1),180/pi*cmd_g(2,2:end),tvec,head*180/pi)
+    subplot(2,1,2); plot(tvec(2:end-1),180/pi*cmd_g(2,2:end),tvec,heading*180/pi)
     ylabel('Heading Angle (deg)'); xlabel('Time(sec)'); grid on
 
     figure

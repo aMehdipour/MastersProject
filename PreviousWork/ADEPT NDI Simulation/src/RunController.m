@@ -28,7 +28,7 @@ Lf = f_aero.Lf; Sf = f_aero.Sf;
 %% Guidance
 % Compute error terms and output required derivatives
 
-err_g = cmd_g - [g;head];
+err_g = cmd_g - [g;heading];
 edot_g = (err_g-elast_g)/ts;
 eint_g = eint_g + err_g*ts;
 
