@@ -48,7 +48,7 @@ if method == 0 % NDI
     tmp(1,1)  = constants.MASS * V * gammaReq + (gz - (constants.MASS * V^2 / z)) * cos(flightPathAngle) - Lf * cos(bank) + Sf * sin(bank);
     tmp(2,1)  = constants.MASS * V * cos(flightPathAngle) * headingReq - Lf * sin(bank) - Sf * cos(bank);
     Brot      = [cos(bank) -sin(bank); sin(bank) cos(bank)];
-    forcereqs = inv(Brot) * tmp; % [Lcs;Scs]
+    forcereqs = Brot' * tmp; % [Lcs;Scs]
 
     cmd_a = (forcereqs - fbias') ./ fslope';
     cmd_a = [0;cmd_a];
@@ -57,7 +57,7 @@ elseif method == 1 % INDI
     tmp(1,1)   = constants.MASS * V * (gammaReq - gammaDot);
     tmp(2,1)   = constants.MASS * V * cos(flightPathAngle) * (headingReq - headingDot);
     Brot       = [cos(bank) -sin(bank); sin(bank) cos(bank)];
-    dforcereqs = inv(Brot) * tmp; % [Lcs;Scs]
+    dforcereqs = Brot' * tmp; % [Lcs;Scs]
 
     dcmd_a = (dforcereqs) ./ fslope';
     cmd_a = [0; aoa; ssl] + [0; dcmd_a];
@@ -140,43 +140,6 @@ elseif method == 1 % INDI
 end
 
 
-% %% Control Allocation
-% umin = zeros(8,1); dumin = zeros(8,1);
-% umax = zeros(8,1); dumax = zeros(8,1);
-% if method == 0
-%     ud = zeros(8,1);
-
-%     for i = 1:8
-%         umin(i) = max([-constants.FLAP_LIMIT fclast(i) - maxdeflect]);
-%         umax(i) = min([constants.FLAP_LIMIT fclast(i) + maxdeflect]);
-% %         umin(i) = -20;
-% %         umax(i) = 20;
-%         if ud(i) < umin(i)
-%             ud(i) = umin(i);
-%         elseif ud(i) > umax(i)
-%             ud(i) = umax(i);
-%         end
-%     end
-%     % implement weighted least squares
-%     [fc,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam_wls);
-
-% elseif method == 1
-%     dud = zeros(8,1) - flapDeflection;
-
-%     for i = 1:8
-%         dumin(i) = max([-constants.FLAP_LIMIT-flapDeflection(i) -maxdeflect]);
-%         dumax(i) = min([constants.FLAP_LIMIT-flapDeflection(i) maxdeflect]);
-%         if dud(i) < dumin(i)
-%             dud(i) = dumin(i);
-%         elseif dud(i) > dumax(i)
-%             dud(i) = dumax(i);
-%         end
-%     end
-%     % implement weighted least squares
-%     [dfc,W,iter] = wls_alloc(B,v,dumin,dumax,Wv,Wu,dud);
-%     fc = fclast + dfc;
-% end
-
 %% Control Allocation
 umin = zeros(8,1); dumin = zeros(8,1);
 umax = zeros(8,1); dumax = zeros(8,1);
@@ -186,14 +149,25 @@ if method == 0
     for i = 1:8
         umin(i) = max([-constants.FLAP_LIMIT fclast(i) - maxdeflect]);
         umax(i) = min([constants.FLAP_LIMIT fclast(i) + maxdeflect]);
+%         umin(i) = -20;
+%         umax(i) = 20;
         if ud(i) < umin(i)
             ud(i) = umin(i);
         elseif ud(i) > umax(i)
             ud(i) = umax(i);
         end
     end
-    % implement weighted least squares with PCH
-    [fc,W,iter] = wls_alloc_pch(B,v,umin,umax,Wv,Wu,ud,gam_wls,(umin+umax)/2, zeros(length(umin),1), 100, 1e-6, 5);
+
+    %PCH
+    satStatus = diag((fclast <= umin) - (fclast >= umax));
+    vHat = B * fclast;
+    vH = v - vHat;
+    fc_bar = fclast - satStatus * pinv(B) * (B * fclast - vH);
+    % fc = fc_bar;
+    % vBar = (B) * fc_bar;
+
+    % implement weighted least squares
+    [fc,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam_wls);
 
 elseif method == 1
     dud = zeros(8,1) - flapDeflection;
@@ -207,10 +181,80 @@ elseif method == 1
             dud(i) = dumax(i);
         end
     end
-    % implement weighted least squares with PCH
-    [dfc,W,iter] = wls_alloc_pch(B,v,dumin,dumax,Wv,Wu,dud,gam_wls,(dumin+dumax)/2, zeros(length(dumin),1), 100, 1e-6, 5);
+    % PCH
+    satStatus = diag((fclast <= umin) - (fclast >= umax));
+    vHat = B * fclast;
+    vH = v - vHat;
+    dfcbar = fclast - satStatus * pinv(B) * (B * fclast - vH);
+    % vBar = B * dfcbar;
+    % B_inv = pinv(B);
+    % sat_status = (flapDeflection <= dumin) - (flapDeflection >= dumax);
+    % dud_bar = flapDeflection - B_inv * (sat_status .* (B * flapDeflection - v));
+
+    % implement weighted least squares
+    [dfc,W,iter] = wls_alloc(B,v,dumin,dumax,Wv,Wu,dud,gam_wls);
+
     fc = fclast + dfc;
+    % fc = fcbar;
 end
+
+% Here is where you should add Pseudo Control Hedging
+% v_actual = B * fc; % this should be your actual achieved control
+
+% Compute the pseudo control input
+% v_pseudo = v - v_actual;
+
+% Compute the saturation status for each control channel
+% sat_status = (fc <= umin) | (fc >= umax);
+
+% Compute the hedging control
+% u_hedge = v_pseudo - v_actual;
+
+% Compute the number of nonsaturated control channels
+% N_nonsat = sum(~sat_status);
+
+% Distribute the hedging control to the nonsaturated channels
+% if N_nonsat > 0
+%     fc(~sat_status) = fc(~sat_status) + u_hedge / N_nonsat;
+% end
+
+
+
+% %% Control Allocation
+% umin = zeros(8,1); dumin = zeros(8,1);
+% umax = zeros(8,1); dumax = zeros(8,1);
+% if method == 0
+%     ud = zeros(8,1);
+
+%     for i = 1:8
+%         umin(i) = max([-constants.FLAP_LIMIT fclast(i) - maxdeflect]);
+%         umax(i) = min([constants.FLAP_LIMIT fclast(i) + maxdeflect]);
+
+%         if ud(i) < umin(i)
+%             ud(i) = umin(i);
+%         elseif ud(i) > umax(i)
+%             ud(i) = umax(i);
+%         end
+%     end
+%     % implement weighted least squares with PCH
+%     [fc,W,iter] = wls_alloc_pch(B,v,umin,umax,Wv,Wu,ud,gam_wls,(umin+umax)/2, zeros(length(umin),1), 100, 1e-6, 5);
+
+% elseif method == 1
+%     dud = zeros(8,1) - flapDeflection;
+
+%     for i = 1:8
+%         dumin(i) = max([-constants.FLAP_LIMIT-flapDeflection(i) -maxdeflect]);
+%         dumax(i) = min([constants.FLAP_LIMIT-flapDeflection(i) maxdeflect]);
+%         if dud(i) < dumin(i)
+%             dud(i) = dumin(i);
+%         elseif dud(i) > dumax(i)
+%             dud(i) = dumax(i);
+%         end
+%     end
+%     % implement weighted least squares with PCH
+%     [dfc,W,iter] = wls_alloc_pch(B,v,dumin,dumax,Wv,Wu,dud,gam_wls,(dumin+dumax)/2, zeros(length(dumin),1), 100, 1e-6, 5);
+%     fc = fclast + dfc;
+% end
 
 %% Save Controller Data
 ctrl.errorLastGammaHeading = errorGammaHeading;

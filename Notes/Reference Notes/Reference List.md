@@ -19,3 +19,6 @@
 19. PTERODACTYL: CONTROL SYSTEM DESIGN FOR DEPLOYABLE ENTRY VEHICLES
 20.  Dsouza, S. N., “Pterodactyl: Integrated Control Design for Precision Targeting of Deployable Entry Vehicles”, NASA Ames Research Center, Interplanetary Probe Workshop, 2018.
 21. Returning from Space: Re-entry
+22. Principles of GNSS, Inertial, and Multisensor integrated navigation systems 2nd edition Paul D. Groves
+23. N. X. Vinh, A. Busemann, and R. D. Culp, Hypersonic and Planetary Entry Flight Mechanics. The
+University of Michigan Press, Ann Harbor, 1980.

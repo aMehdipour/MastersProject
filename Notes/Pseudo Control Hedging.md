@@ -20,3 +20,9 @@ Here's a brief overview of how Pseudo Control Hedging works:
 PCH allows the control system to continue functioning effectively even when some actuators reach their limits by prioritizing the most important control objectives and redistributing the control effort accordingly. This makes it a valuable technique for handling control saturation in various control systems, including re-entry vehicles.
 
 Remember that the implementation of PCH might require some tuning and customization based on the specific characteristics of your control system and actuators. Be prepared to experiment with different configurations to find the best balance between performance and control effort distribution.
+
+Control law from NDI calculates the desired actuator command by inverting the classical state space equation $\dot{x} = a(x) + b(x)\delta_{comm}$ where $\delta_{comm}$ is the commanded actuator deflection. Inversion of the the equation to solve for the actuator command yields $\delta_{comm} = b^{-1}(x)[\nu - a(x)]$ where $\nu$ is the virtual control input. The virtual control input can be estimated by $\hat{\nu} = a(x) + b(x)\delta_{act}$ where $\delta_{act}$ is the actual control input with actuator position and rate limits taken into account. The PCH signal $\nu_h$ can be calculated by subtracting the estimated from the commanded virtual input: $\nu_{h} = \nu - \hat{\nu}$ 
+
+## Pseudo Control Hedging and its Application for Safe Flight Envelope Protection
+
+- 

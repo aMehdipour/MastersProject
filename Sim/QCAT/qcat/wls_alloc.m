@@ -1,5 +1,5 @@
 function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
-  
+
 % WLS_ALLOC - Control allocation using weighted least squares.
 %
 %  [u,W,iter] = wls_alloc(B,v,umin,umax,[Wv,Wu,ud,gamma,u0,W0,imax])
@@ -25,7 +25,7 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
 % u0    initial point (m x 1)
 % W0    initial working set (m x 1) [empty]
 % imax  max no. of iterations [100]
-% 
+%
 %  Outputs:
 %  -------
 % u     optimal control
@@ -37,10 +37,10 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
 %                           +1 if u_i = umax_i
 %
 % See also: WLSC_ALLOC, IP_ALLOC, FXP_ALLOC, QP_SIM.
-  
+
 % Number of variables
   m = length(umin);
-  
+
   % Set default values of optional arguments
   if nargin < 11
     imax = 100; % Heuristic value
@@ -51,23 +51,23 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
     if nargin < 6,  Wu = eye(m);     end
     if nargin < 5,  Wv = eye(k);     end
   end
-      
+
   gam_sq = sqrt(gam);
   A = [gam_sq*Wv*B ; Wu];
   b = [gam_sq*Wv*v ; Wu*ud];
-  
+
   % Initial residual.
   d = b - A*u;
   % Determine indeces of free variables.
   i_free = W==0;
-  
+
   % Iterate until optimum is found or maximum number of iterations
   % is reached.
   for iter = 1:imax
     % ----------------------------------------
     %  Compute optimal perturbation vector p.
     % ----------------------------------------
-    
+
     % Eliminate saturated variables.
     A_free = A(:,i_free);
     % Solve the reduced optimization problem for free variables.
@@ -76,11 +76,11 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
     p = zeros(m,1);
     % Insert perturbations from p_free into free the variables.
     p(i_free) = p_free;
-    
+
     % ----------------------------
     %  Is the new point feasible?
     % ----------------------------
-    
+
     u_opt = u + p;
     infeasible = (u_opt < umin) | (u_opt > umax);
 
@@ -89,7 +89,7 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
       % ----------------------------
       %  Yes, check for optimality.
       % ----------------------------
-      
+
       % Update point and residual.
       u = u_opt;
       d = d - A_free*p_free;
@@ -102,23 +102,23 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
 	% \ ------------------------ /
 	return;
       end
-      
+
       % --------------------------------------------------
       %  Optimum not found, remove one active constraint.
       % --------------------------------------------------
-      
+
       % Remove constraint with most negative lambda from the
       % working set.
       [lambda_neg,i_neg] = min(lambda);
       W(i_neg) = 0;
       i_free(i_neg) = 1;
-    
+
     else
-      
+
       % ---------------------------------------
       %  No, find primary bounding constraint.
       % ---------------------------------------
-      
+
       % Compute distances to the different boundaries. Since alpha < 1
       % is the maximum step length, initiate with ones.
       dist = ones(m,1);
@@ -133,11 +133,11 @@ function [u,W,iter] = wls_alloc(B,v,umin,umax,Wv,Wu,ud,gam,u,W,imax)
       % Update point and residual.
       u = u + alpha*p;
       d = d - A_free*alpha*p_free;
-      
+
       % Add corresponding constraint to working set.
       W(i_alpha) = sign(p(i_alpha));
       i_free(i_alpha) = 0;
-      
+
     end
-  
+
   end

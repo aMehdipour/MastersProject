@@ -6,6 +6,7 @@
 \usepackage{titlesec}
 \usepackage{times}
 \usepackage{indentfirst}
+\usepackage{scalerel}
 
 \edef\restoreparindent{\parindent=\the\parindent\relax}
 \usepackage{parskip}
@@ -28,6 +29,10 @@
 
 \setcounter{secnumdepth}{3}
 
+\setlength{\abovedisplayskip}{0pt}
+\setlength{\abovedisplayshortskip}{0pt}
+\setlength{\belowdisplayskip}{0pt}
+\setlength{\belowdisplayshortskip}{0pt}
 
 \begin{document}
 
@@ -180,17 +185,17 @@ The proposed guidance system will be developed for a variant of ADEPT known as t
 \hline
 Rib to rib diameter & 0.7 & m\\
 \hline
-Reference area & 0.3489 & m^2\\
+Reference area & 0.3489 & $m^2$\\
 \hline
 Center of mass & [-109.80, 0.25, 0.25] & mm\\
 \hline
 Mass & 8.49 & kg\\
 \hline
-I_{xx} & 0.25 & kg$\cdot$m^2\\
+$I_{xx}$ & 0.25 & kg$\cdot m^2$\\
 \hline
-I_{yy} & 0.1722 & kg$\cdot$m^2\\
+$I_{yy}$ & 0.1722 & kg$\cdot m^2$\\
 \hline
-I_{xx} & 0.1719 & kg$\cdot$m^2\\
+$I_{xx}$ & 0.1719 & kg$\cdot m^2$\\
 \hline
 \end{tabular}
 \end{center}
@@ -243,6 +248,173 @@ The objective of this study is to develop a guidance algorithm for the ADEPT SR-
 \subsection{Methodology}
 Mathematical models of the Earth and Mars atmospheres are constructed, as well as a method for calculating the chemical composition of the atmosphere based on the Mach number of the RV. This will facilitate the accurate calculation of the heat flux entering the RV and will be used as an input in the heat flux inequality constraint. Coordinate systems will be developed for both the Martian entry and the Earth return cases, to allow for navigation information to be fed into the guidance algorithm. An augmented predictor-corrector guidance law will be developed and tested in both entry environments, and its performance compared to the traditional method of pre-planned trajectories. Finally, a noise sensitivity analysis will be conducted for the controller and guidance algorithm, and a filter developed if necessary.
 
+\section{Coordinate Frames and Transformations}
+\subsection{Coordinate Frame Definitions}
+Vehicle coordinate frames are defined as in Figure 2.1 below, with the ADEPT body axis frame constructed such that the x-axis points from the center of mass forward through the center of the deployable heat shield, the y-axis points from the center of mass to the right of the vehicle, and the z-axis points from the center of mass to the bottom of the vehicle. Additionally, a vehicle aerodynamic coordinate frame is defined around the velocity vector of the RV, and is achieved by rotation through the sideslip angle $\beta$, angle of attack, $\alpha$, and the aerodynamic roll angle, also known as the bank angle, denoted by $\sigma$.
+
+FIXME: FIGURE 2.1 SHOWING THE VEHICLE COORDINATE FRAMES (JOSH PAPER)
+
+To describe the position of the ADEPT RV, additional coordinate frames must be defined for navigation purposes. The Earth-centered Earth-fixed coordinate frame, commonly refered to as ECEF, is a cartesian coordinate frame with its origin at the center of the Earth. The ECEF frame X axis points from the center of the Earth to the intersection of the equator and the prime meridian, the Y axis points from the center of the Earth to the intersection of the equator and the 90 degree meridian, and the Z axis points from the center of the Earth to the Earth's rotation axis with the positive direction pointing to true north. The ECEF frame is fixed with respect to the Earth, and thus rotates along with the Earth with a rotational speed $\omega_{Earth}$ of approximately 7.292115e-5 rad/s. For Mars based missions, a similar coordinate frame is defined, with the origin at the center of Mars and the axes pointing in the same directions as the ECEF frame. The Mars-centered Mars-fixed frame, denoted MCMF, is fixed with respect to Mars and rotates with a rotational speed $\omega_{Mars}$ of approximately 7.088218e-5 rad/s. The ECEF and Mars-fixed frames are used to describe the position of the RV with respect to the Earth and Mars respectively, and are useful when guiding the vehicle to a specified point on the respective planet's surface.
+
+The reference ellipsoid for Earth is provided by the World Geodetic System 84 (WGS84). It defines the Earth semi-major axis, $a$, the semi-minor axis, $b$, and the flattening factor, $f$ as
+\begin{gather*}
+    \setlength\jot{-2ex}
+    \begin{aligned}
+        a &= 6378137.0\,\text{m} \\
+        b &= 6356752.314245\,\text{m} \\
+        f &= \frac{1}{298.257223563}
+    \end{aligned}
+\end{gather*}
+respectively. The reference ellipsoid for Mars is provided by the Mars Orbiter Laser Altimeter (MOLA). It defines the Mars semi-major axis, semi-minor axis, and flattening factor as
+\begin{gather*}
+    \setlength\jot{-2ex}
+    \begin{aligned}
+        a &= 3396190.0\,\text{m} \\
+        b &= 3376200.0\,\text{m} \\
+        f &= \frac{1}{169.81}
+    \end{aligned}
+\end{gather*}
+The flattening factor is used to define the eccentricity of the ellipsoid, $e$ and the first eccentricity squared, $e^2$, as
+\begin{align}
+    e &= \sqrt{2f - f^2},
+\end{align}
+\begin{align}
+    e^2 &= 1 - {(1 - f)}^2.
+\end{align}
+The first eccentricity squared is then used to define the normal radius of curvature, $R_n$, and the meridian radius of curvature, $R_m$, as
+\begin{align}
+    R_n &= \frac{a}{\sqrt{1 - e^2\sin^2L}},
+\end{align}
+\begin{align}
+    R_m &= \frac{a(1 - e^2)}{{(1 - e^2\sin^2L)}^{3/2}}.
+\end{align}
+where $L$ is the geodetic latitude of the point of interest.
+The normal radius of curvature is used to define the normal gravity, $g_n$, as
+\begin{align}
+    g_n &= \frac{\mu}{R_n^2},
+\end{align}
+and the meridian gravity, $g_m$, as
+\begin{align}
+    g_m &= \frac{\mu}{R_m^2}.
+\end{align}
+
+FIXME: FIGURE 2.2 SHOWING THE ECEF AND MCMF FRAMES
+
+As a supplement to the ECEF and MCMF frames, two local level navigation frames are used for the guidance algorithm, the North-East-Down frame and the Wander Azimuth frame. The North-East-Down frame (NED) is a cartesian coordiante frame whose origin is generally either aligned with the center of gravity of the vehicle or attached to a point of interest. The NED frame is defined such that its X axis points towards true North, its Y axis points towards East, and its Z axis points down normal to the surface of the reference ellipsoid. The NED frame provides a more intuitive way to describe the position of the RV relative to points of interest than is provided by the ECEF or MCMF frames.
+
+
+\subsection{Coordinate Frame Transformations}
+Transformations between different coordinate frames are handled through the use of direction-cosine matrices (DCM). The DCM is a 3x3 matrix that transforms a vector from one coordinate frame to another and are denoted as $C^{^{\scaleto{A}{4pt}}}_{\scaleto{B}{4pt}}$ which reads in English as the rotation from coordinate frame B to coordinate frame A.
+The transformation from the ECEF frame to the NED frame, $C^{^{\scaleto{NED}{4pt}}}_{\scaleto{ECEF}{4pt}}$ is achieved by first rotating through the longitude, $\lambda$ and then through the geodetic latitude, $L$ and is given by the equation
+\begin{align}
+  C^{^{\scaleto{NED}{4pt}}}_{\scaleto{ECEF}{4pt}} = \begin{bmatrix}
+    -\sin L \cos {\lambda} & -\sin L \sin {\lambda} & \cos L \\
+    -\sin {\lambda} & \cos {\lambda} & 0 \\
+    -\cos L \cos {\lambda} & -\cos L \sin {\lambda} & -\sin L
+  \end{bmatrix}
+\end{align}
+
+Similarly, the transformation between the body and NED frames is constructed through a 'Z-Y-X' rotation sequence through the body Euler angles, $\phi$, $\theta$, and $\psi$ and is given by the equation
+\begin{align}
+  C^{^{\scaleto{Body}{4pt}}}_{\scaleto{NED}{4pt}} = \begin{bmatrix}
+    \cos{\theta}\cos{\psi} & \cos{\theta}\sin{\psi} & -\sin{\theta} \\
+    \sin{\phi}\sin{\theta}\cos{\psi} - \cos{\phi}\sin{\psi} & \sin{\phi}\sin{\theta}\sin{\psi} + \cos{\phi}\cos{\psi} & \sin{\phi}\cos{\theta} \\
+    \cos{\phi}\sin{\theta}\cos{\psi} + \sin{\phi}\sin{\psi} & \cos{\phi}\sin{\theta}\sin{\psi} - \sin{\phi}\cos{\psi} & \cos{\phi}\cos{\theta}
+  \end{bmatrix}
+\end{align}
+and the rotation from the ECEF frame to the body frame is given by the equation
+\begin{align}
+  C^{^{\scaleto{Body}{4pt}}}_{\scaleto{ECEF}{4pt}} = C^{^{\scaleto{Body}{4pt}}}_{\scaleto{NED}{4pt}}C^{^{\scaleto{NED}{4pt}}}_{\scaleto{ECEF}{4pt}}
+\end{align}
+Earth was used as an example in the above equations, but the method is the same for Mars.
+
+
+
+\section{Equations of Motion}
+\subsection{Six Degree of Freedom Equations of Motion}
+The following equations of motion of the ADEPT RV are taken from [19] and [23]. The linear dynamics are given by
+\begin{align}
+  \dot{V} &= -\frac{g(z)}{m}\sin\gamma - \frac{1}{m}D
+\end{align}
+\begin{align}
+  \dot{\gamma} &= \biggl(-\frac{g(z)}{mV}\biggl)\cos\gamma + \frac{1}{mV}(L\cos\sigma - S\sin\sigma)
+\end{align}
+\begin{align}
+  \dot\psi &= \frac{1}{mV\cos\gamma}(L\sin\sigma + S\cos\sigma)
+\end{align}
+where $V$ is the velocity of the RV, $\gamma$ is the flight path angle, $\psi$ is the heading angle, $g(z)$ is the gravitational acceleration at altitude $z$, $m$ is the mass of the RV, $D$ is the drag force, $L$ is the lift force, and $S$ is the side force.
+
+The rotational dynamics are given by
+\begin{align}
+  \begin{bmatrix}
+    \dot{p} \\
+    \dot{q} \\
+    \dot{r}
+  \end{bmatrix} = J^{-1} \Biggl(\begin{bmatrix}
+     \mathcal{L}\\
+     \mathcal{M}\\
+     \mathcal{N}
+    \end{bmatrix}
+    - \begin{bmatrix}
+      p \\
+      q \\
+      r
+    \end{bmatrix}
+    \times J\begin{bmatrix}
+      p \\
+      q \\
+      r
+\end{bmatrix}
+\Biggl)
+\end{align}
+where $p$, $q$, and $r$ are the roll, pitch, and yaw rates, respectively, $\mathcal{L}$, $\mathcal{M}$, and $\mathcal{N}$ are the roll, pitch, and yaw moments, and $J$ is the vehicle inertia tensor.
+
+The translational kinematics are defined by
+\begin{align}
+  \dot{z} &= V\sin\gamma
+\end{align}
+\begin{align}
+  \dot{\Lambda} &= \frac{V}{z}\cos\gamma\cos\psi
+\end{align}
+\begin{align}
+\dot{\Phi} &= \frac{V}{z\cos\Lambda}\cos\gamma\sin\psi
+\end{align}
+
+and the rotational kinematics are defined by
+\begin{align}
+\dot{\sigma} = p\frac{\cos\alpha}{ \cos\beta} + r \frac{\sin\alpha}{\cos\beta}
+\end{align}
+\begin{align}
+  \dot{\alpha} = -p\cos\alpha\tan\beta - r\sin\alpha\tan\beta + q
+\end{align}
+\begin{align}
+\dot{\beta} = p\sin\alpha - r\cos\alpha
+\end{align}
+
+The figure below illustrates the the different quantities in the above equations are defined with respect to the ECEF and vehicle body frames. Note that the nomenclature differs between this paper and that used by the author of the image source. Notably, $\Phi$ as defined above is equivalent to $\lambda$, $\Lambda$ is equivalent to $\phi$, and $\psi$ is equivalent to $\xi$.
+
+FIXME: Add in image from page 18 of Josh's paper. (Fig 16)
+
+Since a sufficiently small time step is used in the simulation, the equations of motion are integrated using a simple forward Euler integration scheme, where some quantity $x$ is integrated as $x_{i+1} = x_i + \dot{x}dt$ for each time step. The position of the ADEPT RV in the ECEF and NED frames are bookkept through the geodetic latitude and longitude, which are propagated at each time step through the following equations.
+
+\begin{align}
+L_{i+1} &= L_i + \frac{V_{N}}{R_m + z} dt
+\end{align}
+\begin{align}
+\lambda_{i+1} &= \lambda_i + \frac{V_{E}}{(R_n + z)\cos(L_i)} dt
+\end{align}
+
+where $V_N$ and $V_E$ are the north and east components of the velocity vector, respectively, and $R_m$ and $R_n$ are the radii of the Earth in the meridional and normal directions, respectively.
+
+\section{Simulation Studies}
+\subsection{Noise Robustness Analysis}
+In real world applications, guidance, navigation, and control (GNC) systems rely on information from sensors to perform their duties. However, sensors are not perfect and are subject to noise, biases, and scale factor and misalignment errors. Additionally, system modelling inaccuracies and unmodelled phenomena can appear as noise to GNC systems such as the controller. The NDI control scheme, in particular, relies heavily on the modeling fidelity of the system. Therefore, it is important to understand the effects of modelling and sensor noise on the system's performance and determine the robustness of the controller to ensure adequate performance in real world scenarious.
+
+In [5] a test was conducted where the aerodynamic coefficients had a flat scaling factor applied to them to replicate the effects of modelling error. It was found that both the NDI and INDI control schemes, were robust the modelling errors in the form of scaling as can be seen in the figure below. In order to test the robustness of the ADEPT RV to sensor noise, simulations were performed where noise was added to the angular rate channels, $p, q, \text{and} r$, to simulate the effects of noise on the gyroscope measurements. The noise was added to the angular rate channels as a zero-mean Gaussian noise with a standard deviation ranging from $ \sqrt{1e-5}$ to $\sqrt{1e-3}$ rad/s. The results of the simulations can be seen in the figure below. It can be seen that both the NDI and INDI control schemes are robust to the noise in the angular rate channels up to a noise spectral density of 1e-3 rad/s. For the purposes of the guidance system design, it can be assumed that the NDI and INDI control schemes are robust to sensor noise and that an IMU with a noise spectral density of significantly less than 1e-3 rad/s is used.
+
+FIXME: Add in noise robustness plots
+
+FIXME: Add in plots from Josh's paper for the aero scaling analysis.
 \nocite{*}
 \bibliography{sample}
 \end{document}

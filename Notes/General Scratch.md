@@ -5,4 +5,19 @@
 	- Look into how hard it would be to implement the strapdown equations
 	- Fake measurement sources?
 	- COTS star tracker https://github.com/nasa/COTS-Star-Tracker
-	- 
+
+- Nomenclature not yet added
+	- a - semi-major axis
+	- b - semi-minor axis
+	- e - eccentricity of planet
+	- f - flattening factor
+	- Rn - Radius of curvature north
+	- Rm - Radius of curvature meridian
+	- NED
+	- WAZ
+	- ECEF
+	- MCMF
+	- L - geodetic latitude
+	- $\Phi$ - geocentric latitude
+	- $\lambda$ - longtidue
+	- DCM
