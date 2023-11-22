@@ -1,0 +1,82 @@
+\begin{thebibliography}{10}
+\newcommand{\enquote}[1]{``#1''}
+
+\bibitem{columbia}
+Pearlman, R.~Z., \enquote{Columbia Shuttle Disaster: What Happened, What NASA Learned,} {\em Space.com\/}, 2013, [Online; accessed 25 February 2023].
+
+\bibitem{adept}
+Schreyer, C. M.~S., Abdalla, A.~D., Goyne, C.~D., Hagerstrom, A.~M., Giddings, J.~P., et~al., \enquote{{The Adaptable, Deployable, Entry and Placement Technology (ADEPT) enabling advanced entry, descent, and landing capabilities for SmallSat missions},} {\em Acta Astronautica\/}, Vol.~162, 2019, pp.~648--665.
+
+\bibitem{venkatapathy}
+Venkatapathy, E., \enquote{{Ballistic and Lifting Nano ADEPT – Flight Testing for Mission Infusion Opportunities},} {\em OPAG Briefing\/}, August 2016.
+
+\bibitem{cruzgreen}
+Cruz, J. and Green, J., \enquote{{Subsonic Dynamic Testing of a Subscale ADEPT Entry Vehicle},} {\em {AIAA Aviation Forum}\/}, {NASA Langley Research Center}, 2019.
+
+\bibitem{stokes}
+Stokes, J.~T., {\em {Control System Design for a Hypersonic Entry Capsule}\/}, Master's thesis, {Name of University}, May 2022.
+
+\bibitem{vanttveld}
+Veld, R.~V., {\em {Incremental Nonlinear Dynamic Inversion Flight Control Stability and Robustness Analysis and Improvements}\/}, Master's thesis, Delft University, 2016.
+
+\bibitem{wangkampenchu}
+Wang, X., Kampen, E., and Chu, Q., \enquote{{Stability Analysis for Incremental Nonlinear Dynamic Inversion Control},} {\em {AIAA Guidance, Navigation, and Control Conference}\/}, 2018.
+
+\bibitem{woodman}
+Woodman, O.~J., {\em {An Introduction to Inertial Navigation}\/}, {The Institution of Engineering and Technology}, {London, United Kingdom}, 2007.
+
+\bibitem{ukf}
+Lee, S. and Lee, H., \enquote{{Unscented Kalman Filter with Process Noise Covariance Estimation for Vehicular INS/GPS Integration System},} {\em Journal of Navigation\/}, Vol.~66, No.~2, 2013, pp.~365--379.
+
+\bibitem{apollo_entry}
+Longuski, R.~M., Warga, J.~M., and Johnson, W.~E., \enquote{{The Apollo Entry Guidance: A Review of the Mathematical Development and Its Operational Characteristics},} {\em IEEE Control Systems Magazine\/}, Vol.~12, No.~6, 1992, pp.~27--37.
+
+\bibitem{unified_method}
+Longuski, S.~R. and Warga, J.~M., \enquote{{Entry Guidance: A Unified Method},} {\em Journal of Guidance, Control, and Dynamics\/}, Vol.~12, No.~6, 1989, pp.~749--753.
+
+\bibitem{harpold_graves}
+Harpold, J. and Graves, C., \enquote{{Shuttle Entry Guidance},} {\em Journal of Astronautical Sciences\/}, Vol.~37, No.~3, 1979, pp.~239--268.
+
+\bibitem{shen_lu}
+Shen, Z. and Lu, P., \enquote{{On-Board Generation of Three-Dimensional Constrained Entry Trajectories},} {\em Journal of Guidance, Control, and Dynamics\/}, Vol.~26, No.~1, 2003, pp.~111--121.
+
+\bibitem{shen_lu_2005}
+Shen, Z. and Lu, P., \enquote{{On-Board Entry Trajectory Planning for Sub-Orbital Flight},} {\em Acta Astronautica\/}, Vol.~56, No.~6, 2005, pp.~573--591.
+
+\bibitem{predictor_corrector}
+Han, K.~S. and Kim, Y.~S., \enquote{{A Predictor-corrector Entry Guidance Method Using Gaussian Integration},} {\em Journal of Guidance, Control, and Dynamics\/}, Vol.~31, No.~4, 2008, pp.~1071--1076.
+
+\bibitem{robust_predictor_corrector}
+Zhang, Y. and Song, W., \enquote{{A Robust Predictor-Corrector Entry Guidance},} {\em Aerospace Science and Technology\/}, Vol.~34, 2014, pp.~61--69.
+
+\bibitem{predictor_corrector_low_lift}
+David, D.~V. and Prussing, J.~E., \enquote{{Predictor-Corrector Entry Guidance for Low-Lifting Vehicles},} {\em Journal of Guidance, Control, and Dynamics\/}, Vol.~10, No.~1, 1987, pp.~27--33.
+
+\bibitem{real_time_reentry_guidance}
+Jiang, Y., Sun, L., Li, D., Lu, X., Xue, D., Zhang, L., and Chen, J., \enquote{{A Real-Time Reentry Guidance Method for Hypersonic Vehicles Based on a Time2vec and Transformer Network},} {\em IEEE Transactions on Neural Networks and Learning Systems\/}, Vol.~32, No.~7, 2021, pp.~2897--2909.
+
+\bibitem{dsouza_feasible_flap_control}
+Dsouza, S.~N., Okolo, W., Nikaido, B., Yount, B., Tran, J., Margolis, B., Smith, B., Cassell, A., Johnson, B., Hibbard, K., Barton, J., and Hays, Z., \enquote{{Developing a Feasible Flap Control Design for Lifting Nano-ADEPT},} {\em AIAA Aviation Forum\/}, 2019.
+
+\bibitem{dsouza_pterodactyl}
+Dsouza, S.~N., \enquote{{Pterodactyl: Integrated Control Design for Precision Targeting of Deployable Entry Vehicles},} {\em NASA Ames Research Center, Interplanetary Probe Workshop\/}, 2018.
+
+\bibitem{returning_from_space}
+{Federal Aviation Administration}, \enquote{{Returning from Space: Re-entry},} N/A, [Accessed: 3/5/2023].
+
+\bibitem{groves_2013}
+Groves, P.~D., {\em {Principles of GNSS, Inertial, and Multisensor Integrated Navigation Systems, Second Edition}\/}, Artech House, 2013.
+
+\bibitem{vinh_1980}
+Vinh, N.~X., Busemann, A., and Culp, R.~D., {\em {Hypersonic and Planetary Entry Flight Mechanics}\/}, The University of Michigan Press, 1980.
+
+\bibitem{sbg-systems_image}
+Systems, S., \enquote{{NED Schema},} 2023, [Online; accessed 6 May 2023].
+
+\bibitem{johnson_calise_2001}
+Johnson, E. and Calise, A., \enquote{Pseudo-Control Hedging: A New Method For Adaptive Control,} 2001.
+
+\bibitem{lombaerts2010}
+Lombaerts, T., Looye, G., Chu, Q., and Mulder, J., \enquote{Pseudo Control Hedging and its Application for Safe Flight Envelope Protection,} {\em AIAA Guidance, Navigation, and Control Conference\/}, {American Institute of Aeronautics and Astronautics}, Toronto, Ontario Canada, 2010.
+
+\end{thebibliography}

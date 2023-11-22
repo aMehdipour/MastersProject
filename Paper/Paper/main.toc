@@ -1,0 +1,15 @@
+\contentsline {section}{\numberline {1}Introduction}{1}{}%
+\contentsline {subsection}{\numberline {1.1}Motivation}{1}{}%
+\contentsline {subsection}{\numberline {1.2}Literature Review}{2}{}%
+\contentsline {subsection}{\numberline {1.3}Project Proposal}{7}{}%
+\contentsline {subsection}{\numberline {1.4}Methodology}{7}{}%
+\contentsline {section}{\numberline {2}Coordinate Frames and Transformations}{7}{}%
+\contentsline {subsection}{\numberline {2.1}Coordinate Frame Definitions}{7}{}%
+\contentsline {subsection}{\numberline {2.2}Coordinate Frame Transformations}{10}{}%
+\contentsline {section}{\numberline {3}Equations of Motion}{11}{}%
+\contentsline {subsection}{\numberline {3.1}Six Degree of Freedom Equations of Motion}{11}{}%
+\contentsline {section}{\numberline {4}Simulation Studies}{13}{}%
+\contentsline {subsection}{\numberline {4.1}Noise Robustness Analysis}{13}{}%
+\contentsline {subsection}{\numberline {4.2}Control Saturation Testing}{16}{}%
+\contentsline {subsection}{\numberline {4.3}Computational Fluid Dynamics Analysis}{18}{}%
+\contentsline {section}{\numberline {5}Current Progress}{20}{}%
