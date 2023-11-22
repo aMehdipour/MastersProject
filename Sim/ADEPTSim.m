@@ -19,7 +19,7 @@ set(0,'DefaultFigureWindowStyle','docked')
 c = 271.42; % speed of sound at 100km altitude (m/s)
 constants.RADIUS_EQ        = 6378137.0;    % Earth's radius at the equator (semi-major axis)
 constants.RADIUS_POLE      = 6356752.3142; % Earth's radius at the poles (semi-minor axis)
-constants.MASS             = 8.490; % vehicle mass (kg)
+constants.MASS             = 73.8;%8.490; % vehicle mass (kg)
 constants.INERTIA          = [0.25 0 0; 0 0.1722 0; 0 0 0.1719]; % vehicle moment of inertia tensor (kg-m^2)
 constants.FLAP_AREA        = 0.026;
 constants.FRONTAL_AREA     = 0.3849; % frontal area of ADEPT craft (m^2)
@@ -27,11 +27,21 @@ constants.REFERENCE_LENGTH = 0.69; % reference length for moment calculation (m)
 constants.FLAP_MOMENT_ARM  = 0.84;
 constants.FLAP_LIMIT       = 20; % Flap deflection limit (degrees)
 constants.OMEGA_EARTH      = 7.292115e-5; % Earth's rotation rate (rad/s)
+constants.GRAVITY_NOMINAL  = 9.81; % Nominal gravity at sea level (m/s^2)
+constants.TIME_SCALE       = sqrt(constants.RADIUS_EQ / constants.GRAVITY_NOMINAL);
+constants.VEL_SCALE        = sqrt(constants.GRAVITY_NOMINAL * constants.RADIUS_EQ);
+constants.LENGTH_SCALE     = 1 / constants.RADIUS_EQ;
+constants.ALTITUDE_FINAL   = 6000; % Target altitude for guidance termination
+constants.RANGE_FINAL      = 2000; % Allowable miss distance
+constants.VELOCITY_FINAL   = 690; % Velocity magnitude at which to exit guidance (m/s). Taken from 
+constants.G_LIMIT          = 15; % Structural G limit in gees
+constants.HEAT_RATE_LIMIT  = 250; % Heat rate limit in W/cm^2
+
 rng(69); % Set the RNG seed for reproducability
 
 %% Sim Settings
 dt = 1/500;
-tend = 100;
+tend = 200;
 tvec = 0:dt:tend;
 npoints = length(tvec); % Number of timesteps
 CFD.aeroScalingFactor = 1; % Scaling factor for aero variables to add scaling error
@@ -41,7 +51,7 @@ ctrl.ts = 1/500; % sample time (s)
 ts_g = 1/500;
 ctrl.tsratio = ts_g/ctrl.ts;
 ctrl.cnt = 1;
-methods = [0, 1]; % 0 to use NDI,1 to use INDI
+methods = [1]; % 0 to use NDI,1 to use INDI
 ctrl.loopselect = 0; % 0 to use guidance, 1 to use angle, 2 to use rate
 cs_rate = 200; % maximum deflection rate for control surfaces (deg/s)
 ctrl.maxdeflect = ctrl.ts * cs_rate; %maximum deflection over one ctrl sample (deg)
@@ -195,7 +205,7 @@ for method = methods
     end
 
     % IMU gyro noise specifications
-    gammas =0; %-5.5;%-40:20:40;
+    gammas = -5.5; %-5.5;%-40:20:40;
     gyroNoiseDensity = gammas;%[0, 1e-5, 1e-4, 1e-3];%linspace(0, 1e-3, 10);
     dataSave.gyroNoiseDensity = gyroNoiseDensity;
 
@@ -235,6 +245,8 @@ for method = methods
                     'gammaDot',gammaDotFilt(i-1),'z',z(i-1),'headingDot',headingDotFilt(i-1),'pDot',pDotFilt(i-1),'qDot',qDotFilt(i-1),'rDot',rDotFilt(i-1),...
                     'aoa',aoa(i),'ssl',ss(i),'gz',gz,'latitude',lat(i),'longitude',lon(i),'rotBodyFromECEF',rotBodyFromECEF(:,:,i),'rotNedFromBody',rotNedFromBody(:,:,i),...
                     'rotNedFromECEF',rotNedFromECEF(:,:,i));
+                
+                guidance_state = st;
 
                 % Commands (Input selected based on ctrl.loopselect)
                 % NOTE: The original implementation only set the flightPathAngle
@@ -357,7 +369,7 @@ for method = methods
             bank(i+1) = bank(i) + bdot(i) * dt;
             aoa(i+1) = aoa(i) + adot(i) * dt;
             ss(i+1) = ss(i) + ssdot(i) * dt;
-            [lat(i+1), lon(i+i)] = propagateLatLon(lat(i), lon(i), V(i+1), heading(i+1), dt, constants);
+            % [lat(i+1), lon(i+i)] = propagateLatLon(lat(i), lon(i), V(i+1), heading(i+1), dt, constants);
             rotNedFromBody(:,:,i+1)  = angle2dcm(heading(i+1),pitch(i+1),roll(i+1),'ZYX');
             rotNedFromECEF(:,:,i+1)  = calcRotNedFromEcef(lat(i+1),lon(i+1));
             rotBodyFromECEF(:,:,i+1) = rotNedFromBody(:,:,i+1)' * rotNedFromECEF(:,:,i+1);
@@ -408,7 +420,7 @@ for method = methods
         dataSave.fin8(:, j, method + 1) = fdplot(8,:);
         dataSave.fins(:,:,j, method + 1) = fdplot;
         dataSave.V(:, j, method + 1) = V;
-        dataSave.alt(:, j, method + 1) = alt;
+        dataSave.alt(:, j, method + 1) = z;
 
         disp('Simulation Complete')
         toc
@@ -715,6 +727,6 @@ xlabel('Time (s)')
 ylabel('Velocity (m/s)')
 
 nexttile
-plot(dataSave.time(:,1,1), dataSave.alt(:,1,1) ./ dataSave.V(:,1,1), 'LineWidth', 2)
+plot(dataSave.time(:,1,1), dataSave.alt(:,1,1), 'LineWidth', 2)
 xlabel('Time (s)')
-ylabel('$T_{go}$ (s)')
+ylabel('$Altitude$ (m)')
