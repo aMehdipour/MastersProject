@@ -1,0 +1,34 @@
+# Bike Model
+- Original differential EOMs
+	- $T = I\alpha$
+	- $F = ma$
+- Transformed differential EOMs
+	- $N = I_{z} \frac{dr}{dt}$
+	- $Y = ma_y$
+- $a_{y} = Vr + \dot{v} = Vr + V\dot{\beta} = V(r+\dot{\beta})$
+- $\alpha_{R} = \frac{v-br}{V} = \frac{v}{V}-\frac{br}{V} = \beta-\frac{br}{V}$
+- $\alpha_{F} = \beta + \frac{ar}{V}-\delta$
+- $Y_{F} = C_{F}\beta+C_{F}(\frac{ar}{V})-C_{F}\delta$
+- $Y_{R} = C_{R}\beta-C_{R}(\frac{br}{V})$
+- $Y = Y_{F}+Y_{R}$
+- $N = N_{F}+N_{R} = Y_{F}a-Y_{R}b$
+- $Y = Y_{\beta}\beta+Y_{r}r+Y_{\delta}\delta$
+	- $Y_{\beta} = C_{F}+C_{R}$
+	- $Y_{r}=\frac{1}{V}(aC_{F}-bC_{R})$
+	- $Y_{\delta}=-C_F$
+- $N=N_{\beta}\beta+N_{r}r+N_{\delta}\delta$
+	- $N_{\beta}=aC_{F}-bC_{R}$
+	- $N_{r}=\frac{1}{V}(a^{2}C_{F}+b^{2}C_{R})$
+	- $N_{\delta}=-aC_{F}$
+- Final EOMs
+	- $I_{z}\dot{r}=N_{\beta}\beta+N_{r}r+N_{\delta}\delta$
+	- $mV(r+\dot{\beta})=Y_{\beta}\beta+Y_{r}r+Y_{\delta}\delta$
+- Steady-State Response
+	- The EOMs turn into:
+		- $mVr=Y_{\beta}\beta+Y_{r}r+Y_{\delta}\delta$
+		- $0=N_{\beta}\beta+N_{r}r+N_{\delta}\delta$
+	- Knowing that in a SS turn $r=\frac{V}{R}$ gives:
+		- $-Y_{\delta}=Y_{\beta}+(VY_{r}-mV^{2})(\frac{1}{R})$
+		- $-N_{\delta}=N_{\beta}+VN_{r}(\frac{1}{R})$
+	- Solving the $N_\delta$ equation for beta and subbing into first equation gives:
+		- J4d6$NbaqNjQWg9
