@@ -1,11 +1,12 @@
-function bankAngle = modifyBankAngleProfile(rangeError, bankAngleHistory, cntIterations)
-    % Since we are starting the iteration count at 1 instead of zero (damn you MATLAB)
-    % we must subtract 1 from the iteration count in our lambda calculation
-    lambda = 0.5^cntIterations;
-
-    % If the range error is greater than our allowable tolerance, we need
-    % to update the bank angle and try again.
-    bankAngle = bankAngleHistory(cntIterations) - lambda * (rangeError(cntIterations) / (rangeError(cntIterations) - rangeError(cntIterations - 1))) * (bankAngleHistory(cntIterations) - bankAngleHistory(cntIterations - 1));
-
-
+function bankAngle = modifyBankAngleProfile(rangeErrorHistory, bankAngleHistory, cntIterations)
+    if cntIterations == 0
+        % Newton-Raphson method for the first iteration
+        lambda = 0.5^cntIterations;
+        dz_dsigma = (rangeErrorHistory(cntIterations + 2) - rangeErrorHistory(cntIterations + 1)) / epsilon;
+        bankAngle = bankAngleHistory(cntIterations + 1) - lambda * (rangeErrorHistory(cntIterations + 1) / dz_dsigma);
+    else
+        % Secant method for subsequent iterations
+        lambda = 0.5^(cntIterations - 1);
+        bankAngle = bankAngleHistory(cntIterations + 1) - lambda * (rangeErrorHistory(cntIterations + 1) / ((rangeErrorHistory(cntIterations + 1) - rangeErrorHistory(cntIterations)) / (bankAngleHistory(cntIterations + 1) - bankAngleHistory(cntIterations))));
+    end
 end
