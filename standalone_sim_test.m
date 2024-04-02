@@ -1,14 +1,16 @@
 clear
 
 % Constants
-constants.GRAVITY_NOMINAL  = 9.81;       % Gravitational acceleration (m/s^2) constants.EARTH_RADIUS_EQ = 6378137;    % Earth's radius (m)
-constants.INITAL_ALTITUDE  = 100000;     % Initial altitude (m)
-constants.INITIAL_VELOCITY = 7000;       % Initial velocity (m/s)
-constants.INITIAL_FPA      = -5 * pi/180;  % Initial flight path angle (rad)
-constants.TARGET_ALTITUDE  = 50000; % Target final altitude (m)
-constants.TARGET_VELOCITY  = 2000;  % Target final velocity (m/s)
-constants.VEHICLE_MASS     = 73.8;     % Vehicle mass (kg)
-constants.VEHICLE_WEIGHT   = constants.VEHICLE_MASS * constants.GRAVITY_NOMINAL;
+constants.GRAVITY_NOMINAL    = 9.81;       % Gravitational acceleration (m/s^2) constants.EARTH_RADIUS_EQ = 6378137;    % Earth's radius (m)
+constants.INITAL_ALTITUDE    = 100000;     % Initial altitude (m)
+constants.INITIAL_VELOCITY   = 7000;       % Initial velocity (m/s)
+constants.INITIAL_FPA        = -5 * pi/180;  % Initial flight path angle (rad)
+constants.TARGET_ALTITUDE    = 50000; % Target final altitude (m)
+constants.TARGET_VELOCITY    = 2000;  % Target final velocity (m/s)
+constants.VEHICLE_MASS       = 73.8;     % Vehicle mass (kg)
+constants.VEHICLE_WEIGHT     = constants.VEHICLE_MASS * constants.GRAVITY_NOMINAL;
+constants.INITIAL_BANK_ANGLE = 0;
+constants.FINAL_BANK_ANGLE   = deg2rad(70);
 
 parameters.CLtable = [
     0.299968350000000 0.343608540000000 0.371341970000000 0.343649450000000 0.319213950000000;
@@ -25,6 +27,9 @@ parameters.CDtable = [
     1.17123540000000 1.33992400000000 1.43592890000000 1.31202820000000 1.12387350000000;
     1.00943130000000 1.13232540000000 1.25727120000000 1.15570860000000 0.996404960000000
 ];
+
+% Specify the acceptable terminal range error in meters
+parameters.RANGE_ERROR_TOLERANCE = 10000;
 
 % Calculate the trim aero parameters
 [trimAoA, trimCD, trimCL] = calculateTrimAero(parameters, constants, velocity, altitude);
@@ -51,7 +56,7 @@ range = 3704000;
 finalEnergy = -1/2 * (constants.TARGET_VELOCITY / constants.VELOCITY_SCALE)^2 + ((constants.TARGET_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE)^-1;
 
 % Initialize guidance parameters
-bankAngle = 0;
+bankAngle = constants.INITIAL_BANK_ANGLE;
 
 % Simulation loop
 while t < tMax && r > 0
@@ -59,7 +64,7 @@ while t < tMax && r > 0
     currentEnergy = -1/2 * v^2 + 1 / r;
     
     % Predictor-corrector guidance
-    [bankAngle, ~] = predictorCorrectorGuidance(currentEnergy, finalEnergy, range, trimCL, trimCD);
+    [bankAngle, ~] = predictorCorrectorGuidance(currentEnergy, finalEnergy, range, trimCL, trimCD, bankAngle);
     
     % Update state variables
     [r, v, gamma, range] = updateState(r, v, gamma, range, bankAngle, dt, trimCL, trimCD);
@@ -78,17 +83,6 @@ figure;
 plot(range * constants.LENGTH_SCALE, r * constants.LENGTH_SCALE);
 xlabel('Range (m)');
 ylabel('Altitude (m)');
-
-
-
-% Evaluate terminal constraints function
-function terminalConstraint = evaluateTerminalConstraints(predictedTrajectory, finalEnergy)
-    % Extract final energy from predicted trajectory
-    finalEnergy_predicted = predictedTrajectory.energy(end);
-    
-    % Compute terminal constraint
-    terminalConstraint = finalEnergy_predicted - finalEnergy;
-end
 
 % Update state variables function
 function [altitude, velocity, flightPathAngle, range] = updateState(altitude, velocity, flightPathAngle, range, bankAngle, dt, CL, CD)

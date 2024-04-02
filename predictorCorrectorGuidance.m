@@ -1,26 +1,44 @@
 % Predictor-corrector guidance function
-function [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(parameters, constants, r, currentEnergy, finalEnergy, currentRange)
-    % Initialize bank angle profile
-    initialBankAngle = 0;
-    bankAngleProfile = @(energy) initialBankAngle;
+function [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(parameters, constants, r, currentEnergy, finalEnergy, currentRange, bankAngle)
     
+    cntIterations = 1;
+
+    bankAngleHistory(cntIterations) = bankAngle;
+
     % Integrate equations of motion
-    predictedTrajectory = integrateEquationsOfMotion(parameters, constants, r, currentEnergy, finalEnergy, currentRange, bankAngleProfile);
+    predictedTrajectory = integrateEquationsOfMotion(parameters, constants, r, currentEnergy, finalEnergy, currentRange, bankAngle);
     
     % Evaluate terminal constraints
-    terminalConstraint = evaluateTerminalConstraints(predictedTrajectory, finalEnergy);
+    rangeError = evaluateTerminalConstraints(predictedTrajectory, parameters);
     
     % Iteratively adjust bank angle profile
-    while abs(terminalConstraint) > 1e-3
+    while abs(rangeError) > 1e-3
+        if cntIterations == 1
+            cntIterations = cntIterations + 1;
+
+            bankAngle = bankAngle + epsilon;
+
+            bankAngleHistory(cntIterations) = bankAngle;
+
+            % Re-integrate equations of motion
+            predictedTrajectory = integrateEquationsOfMotion(currentEnergy, finalEnergy, currentRange, bankAngleProfile, CL, CD);
+
+            % Re-evaluate terminal constraint
+            rangeError = evaluateTerminalConstraints(predictedTrajectory, parameters);
+
+            % Adjust bank angle profile based on terminal constraint
+            bankAngleHistory(cntIterations + 1) = modifyBankAngleProfile(rangeError, bankAngleHistory, cntIterations);
+
+            continue
+        end
         % Adjust bank angle profile based on terminal constraint
-        initialBankAngle = initialBankAngle + sign(terminalConstraint) * deg2rad(1);
-        bankAngleProfile = @(energy) initialBankAngle;
+        bankAngleHistory(cntIterations + 1) = modifyBankAngleProfile(rangeError, bankAngleHistory, cntIterations);
         
         % Re-integrate equations of motion
         predictedTrajectory = integrateEquationsOfMotion(currentEnergy, finalEnergy, currentRange, bankAngleProfile, CL, CD);
         
         % Re-evaluate terminal constraint
-        terminalConstraint = evaluateTerminalConstraints(predictedTrajectory, finalEnergy);
+        rangeError = evaluateTerminalConstraints(predictedTrajectory, parameters);
     end
     
     % Return commanded bank angle

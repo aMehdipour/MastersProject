@@ -12,3 +12,4 @@ function [density, temperature, pressure] = atmosphereModel(altitude)
 
     temperature = temperature + 273.1;
     density = pressure / (0.2869 * temperature);
+end
