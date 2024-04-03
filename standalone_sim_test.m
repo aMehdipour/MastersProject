@@ -1,16 +1,18 @@
 clear
 
 % Constants
-constants.GRAVITY_NOMINAL    = 9.81;       % Gravitational acceleration (m/s^2) constants.EARTH_RADIUS_EQ = 6378137;    % Earth's radius (m)
-constants.INITAL_ALTITUDE    = 100000;     % Initial altitude (m)
-constants.INITIAL_VELOCITY   = 7000;       % Initial velocity (m/s)
-constants.INITIAL_FPA        = -5 * pi/180;  % Initial flight path angle (rad)
-constants.TARGET_ALTITUDE    = 50000; % Target final altitude (m)
-constants.TARGET_VELOCITY    = 2000;  % Target final velocity (m/s)
-constants.VEHICLE_MASS       = 73.8;     % Vehicle mass (kg)
-constants.VEHICLE_WEIGHT     = constants.VEHICLE_MASS * constants.GRAVITY_NOMINAL;
+constants.GRAVITY_NOMINAL    = 9.81;         % Gravitational acceleration (m/s^2)
+constants.EARTH_RADIUS_EQ    = 6378137;      % Earth's radius (m)
+constants.INITIAL_ALTITUDE   = 100000;       % Initial altitude (m)
+constants.INITIAL_VELOCITY   = 7000;         % Initial velocity (m/s)
+constants.INITIAL_FPA        = -5.5 * pi/180;  % Initial flight path angle (rad)
+constants.TARGET_ALTITUDE    = 50000;        % Target final altitude (m)
+constants.TARGET_VELOCITY    = 2000;         % Target final velocity (m/s)
+constants.VEHICLE_MASS       = 73.8;         % Vehicle mass (kg)
 constants.INITIAL_BANK_ANGLE = 0;
 constants.FINAL_BANK_ANGLE   = deg2rad(70);
+constants.REFERENCE_LENGTH   = 0.69; % reference length for moment calculation (m)
+constants.VEHICLE_WEIGHT     = constants.VEHICLE_MASS * constants.GRAVITY_NOMINAL;
 
 parameters.CLtable = [
     0.299968350000000 0.343608540000000 0.371341970000000 0.343649450000000 0.319213950000000;
@@ -42,35 +44,43 @@ constants.LENGTH_SCALE   = constants.EARTH_RADIUS_EQ;
 constants.TIME_SCALE     = sqrt(constants.EARTH_RADIUS_EQ / constants.GRAVITY_NOMINAL);
 
 % Simulation parameters
-dt = 0.001;    % Time step (s)
-tMax = 10;     % Maximum simulation time (s)
+parameters.dt = 0.001;    % Time step (s)
+parameters.tMax = 10;     % Maximum simulation time (s)
 
 % Initialize state variables
 t = 0;
-r = (constants.INITAL_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE;
+r = (constants.INITIAL_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE;
 v = constants.INITIAL_VELOCITY / constants.VELOCITY_SCALE;
-gamma = constants.INITIAL_FPA;
-range = 3704000;
+state.gamma = constants.INITIAL_FPA;
+state.range = 3704000;
+state.altitude = constants.INITIAL_ALTITUDE;
+state.velocity = constants.INITIAL_VELOCITY;
 
 % Calculate final energy
 finalEnergy = -1/2 * (constants.TARGET_VELOCITY / constants.VELOCITY_SCALE)^2 + ((constants.TARGET_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE)^-1;
 
 % Initialize guidance parameters
-bankAngle = constants.INITIAL_BANK_ANGLE;
+state.bankAngle = constants.INITIAL_BANK_ANGLE;
 
 % Simulation loop
-while t < tMax && r > 0
+while t < parameters.tMax && altitude > 0
     % Compute current energy
     currentEnergy = -1/2 * v^2 + 1 / r;
     
     % Predictor-corrector guidance
-    [bankAngle, ~] = predictorCorrectorGuidance(currentEnergy, finalEnergy, range, trimCL, trimCD, bankAngle);
+    [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(parameters,...
+                                                                           constants,...
+                                                                           state,...
+                                                                           currentEnergy,...
+                                                                           finalEnergy,...
+                                                                           currentRange,...
+                                                                           bankAngle);
     
     % Update state variables
-    [r, v, gamma, range] = updateState(r, v, gamma, range, bankAngle, dt, trimCL, trimCD);
+    [altitude, velocity, gamma, range] = updateState(altitude, velocity, gamma, range, commandedBankAngle, constants, parameters);
     
     % Increment time
-    t = t + dt;
+    t = t + parameters.dt;
 end
 
 % Plot results
@@ -84,22 +94,3 @@ plot(range * constants.LENGTH_SCALE, r * constants.LENGTH_SCALE);
 xlabel('Range (m)');
 ylabel('Altitude (m)');
 
-% Update state variables function
-function [altitude, velocity, flightPathAngle, range] = updateState(altitude, velocity, flightPathAngle, range, bankAngle, dt, CL, CD)
-    % Compute non-dimensionalized lift and drag forces
-    [rho, ~, ~] = atmosphereModel(altitude);
-    lift = 0.5 * rho * CL * velocity^2;
-    drag = 0.5 * rho * CD * velocity^2;
-    
-    % Equations of motion
-    velocityDot = -drag - sin(flightPathAngle);
-    flightPathAngleDot = (lift * cos(bankAngle) - cos(flightPathAngle)) / velocity;
-    altitudeDot = velocity * sin(flightPathAngle);
-    rangeDot = velocity * cos(flightPathAngle);
-    
-    % Update state variables
-    velocity = velocity + velocityDot * dt;
-    flightPathAngle = flightPathAngle + flightPathAngleDot * dt;
-    altitude = altitude + altitudeDot * dt;
-    range = range + rangeDot * dt;
-end
