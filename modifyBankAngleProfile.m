@@ -2,7 +2,7 @@ function bankAngle = modifyBankAngleProfile(rangeErrorHistory, bankAngleHistory,
     if cntIterations == 0
         % Newton-Raphson method for the first iteration
         lambda = 0.5^cntIterations;
-        dz_dsigma = (rangeErrorHistory(cntIterations + 2) - rangeErrorHistory(cntIterations + 1)) / epsilon;
+        dz_dsigma = (rangeErrorHistory(cntIterations + 2) - rangeErrorHistory(cntIterations + 1)) / (bankAngleHistory(2) - bankAngleHistory(1));
         bankAngle = bankAngleHistory(cntIterations + 1) - lambda * (rangeErrorHistory(cntIterations + 1) / dz_dsigma);
     else
         % Secant method for subsequent iterations

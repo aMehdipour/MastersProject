@@ -1,14 +1,18 @@
-clear
+clear, close all
 
 % Constants
-constants.GRAVITY_NOMINAL    = 9.81;         % Gravitational acceleration (m/s^2)
-constants.EARTH_RADIUS_EQ    = 6378137;      % Earth's radius (m)
-constants.INITIAL_ALTITUDE   = 100000;       % Initial altitude (m)
-constants.INITIAL_VELOCITY   = 7000;         % Initial velocity (m/s)
-constants.INITIAL_FPA        = -5.5 * pi/180;  % Initial flight path angle (rad)
-constants.TARGET_ALTITUDE    = 50000;        % Target final altitude (m)
-constants.TARGET_VELOCITY    = 2000;         % Target final velocity (m/s)
-constants.VEHICLE_MASS       = 73.8;         % Vehicle mass (kg)
+constants.GRAVITY_NOMINAL    = 9.81;           % Gravitational acceleration (m/s^2)
+constants.EARTH_RADIUS_EQ    = 6378137;        % Earth's radius (m)
+constants.INITIAL_ALTITUDE   = 122000;         % Initial altitude (m)
+constants.INITIAL_VELOCITY   = 10100;          % Initial velocity (m/s)
+constants.INITIAL_FPA        = -5.2 * pi/180;  % Initial flight path angle (rad)
+constants.INITIAL_LAT        = -4.7;           % EI latitude (deg) 
+constants.INITIAL_LON        = -112;           % EI longitude (deg) 
+constants.TARGET_ALTITUDE    = 31000;          % Target final altitude (m)
+constants.TARGET_VELOCITY    = 690;            % Target final velocity (m/s)
+constants.TARGET_LAT         = 40;             % Final latitude (deg) 
+constants.TARGET_LON         = -112;           % Final longitude (deg) 
+constants.VEHICLE_MASS       = 75.7;           % Vehicle mass (kg)
 constants.INITIAL_BANK_ANGLE = 0;
 constants.FINAL_BANK_ANGLE   = deg2rad(70);
 constants.REFERENCE_LENGTH   = 0.69; % reference length for moment calculation (m)
@@ -33,8 +37,11 @@ parameters.CDtable = [
 % Specify the acceptable terminal range error in meters
 parameters.RANGE_ERROR_TOLERANCE = 10000;
 
+% Enable/Disable debug plots and statements
+parameters.debug = false;
+
 % Calculate the trim aero parameters
-[trimAoA, trimCD, trimCL] = calculateTrimAero(parameters, constants, velocity, altitude);
+[trimAoA, trimCD, trimCL] = calculateTrimAero(parameters, constants, constants.INITIAL_VELOCITY, constants.INITIAL_ALTITUDE);
 
 fprintf('Trim AoA: %.2f degrees, Trim CL: %.4f, Trim CD: %.4f\n', trimAoA, trimCL, trimCD);
 
@@ -51,10 +58,12 @@ parameters.tMax = 10;     % Maximum simulation time (s)
 t = 0;
 r = (constants.INITIAL_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE;
 v = constants.INITIAL_VELOCITY / constants.VELOCITY_SCALE;
-state.gamma = constants.INITIAL_FPA;
-state.range = 3704000;
-state.altitude = constants.INITIAL_ALTITUDE;
-state.velocity = constants.INITIAL_VELOCITY;
+state.flightPathAngle = constants.INITIAL_FPA;
+state.rangeToGo       = calculateGCR(constants.INITIAL_LAT, constants.INITIAL_LON, constants.TARGET_LAT, constants.TARGET_LON, constants.EARTH_RADIUS_EQ, 'deg');
+state.altitude        = constants.INITIAL_ALTITUDE;
+state.velocity        = constants.INITIAL_VELOCITY;
+state.r               = r;
+state.v               = v;
 
 % Calculate final energy
 finalEnergy = -1/2 * (constants.TARGET_VELOCITY / constants.VELOCITY_SCALE)^2 + ((constants.TARGET_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE)^-1;
@@ -63,7 +72,7 @@ finalEnergy = -1/2 * (constants.TARGET_VELOCITY / constants.VELOCITY_SCALE)^2 + 
 state.bankAngle = constants.INITIAL_BANK_ANGLE;
 
 % Simulation loop
-while t < parameters.tMax && altitude > 0
+while t < parameters.tMax && state.altitude > 0
     % Compute current energy
     currentEnergy = -1/2 * v^2 + 1 / r;
     
@@ -72,12 +81,10 @@ while t < parameters.tMax && altitude > 0
                                                                            constants,...
                                                                            state,...
                                                                            currentEnergy,...
-                                                                           finalEnergy,...
-                                                                           currentRange,...
-                                                                           bankAngle);
+                                                                           finalEnergy);
     
     % Update state variables
-    [altitude, velocity, gamma, range] = updateState(altitude, velocity, gamma, range, commandedBankAngle, constants, parameters);
+    [altitude, velocity, gamma, range] = updateState(state, commandedBankAngle, constants, parameters);
     
     % Increment time
     t = t + parameters.dt;
