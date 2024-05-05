@@ -12,4 +12,12 @@ function [density, temperature, pressure] = atmosphereModel(altitude)
 
     temperature = temperature + 273.1;
     density = pressure / (0.2869 * temperature);
+
+    % Allow complex input for use of complex-step derivative in finding beta_r
+    if ~isreal(altitude)
+        [rho, pressure, temperature] = atmosphereModel(real(altitude));
+        rho = complex(rho, 0);
+        pressure = complex(pressure, 0);
+        temperature = complex(temperature, 0);
+    end
 end

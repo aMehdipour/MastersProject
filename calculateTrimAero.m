@@ -13,7 +13,7 @@ function [trimAoA, trimCD, trimCL] = calculateTrimAero(parameters, constants, ve
 
     % Find the AoA where lift equals weight (trim AoA)
     [rho, ~, ~] = atmosphereModel(altitude);
-    Lift = 0.5 * rho * (velocity^2) * CL_interp;
+    Lift = 0.5 * rho * (velocity^2) * CL_interp * constants.FRONTAL_AREA;
     [~, idx] = min(abs(Lift - weight)); % Find the index of the closest value to weight
     trimAoA = AoA_fine(idx);
     trimCL = CL_interp(idx);  % Also return trimCL
