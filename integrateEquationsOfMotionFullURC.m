@@ -1,5 +1,5 @@
 % Integrate equations of motion function
-function predictedTrajectory = integrateEquationsOfMotion(parameters, constants, state, currentEnergy, finalEnergy, initialBankAngle)
+function predictedTrajectory = integrateEquationsOfMotionFullURC(parameters, constants, state, currentEnergy, finalEnergy, initialAlpha, initialBeta)
 
     % Integration step size
     energyStep = (finalEnergy - currentEnergy) / 20000;
@@ -9,7 +9,6 @@ function predictedTrajectory = integrateEquationsOfMotion(parameters, constants,
     rangeToGo                = NaN(size(energy));
     normGeocentricDistance   = NaN(size(energy));
     flightPathAngle          = NaN(size(energy));
-    flightPathAngleTest      = NaN(size(energy));
     liftHistory              = NaN(size(energy));
     dragHistory              = NaN(size(energy));
     velocityHistory          = NaN(size(energy));
@@ -18,15 +17,17 @@ function predictedTrajectory = integrateEquationsOfMotion(parameters, constants,
     trimClHistory            = NaN(size(energy));
     trimCdHistory            = NaN(size(energy));
     heatingRateHistory       = NaN(size(energy));
-    modifiedBankAngleProfile = NaN(size(energy));
+    modifiedAlphaProfile     = NaN(size(energy)); % Changed to alpha profile
     crossrange               = NaN(size(energy));
     heading                  = NaN(size(energy));
     latitude                 = NaN(size(energy));
     longitude                = NaN(size(energy));
     deadband                 = NaN(size(energy));
+    headingError             = NaN(size(energy));
+    betaProfile              = NaN(size(energy));
 
-    % Find the bank angle profile (Eq. 24 in Low Lifting Entry Guidance)
-    bankAngleProfile = createBankAngleProfile(initialBankAngle, state.bankSign * constants.FINAL_BANK_ANGLE, energy);
+    % Find the alpha profile (similar to Eq. 24 in Low Lifting Entry Guidance)
+    alphaProfile = createAlphaProfile(initialAlpha, constants.FINAL_ALPHA, energy);
 
     % Set initial conditions
     rangeToGo(1)              = state.rangeToGo;
@@ -36,85 +37,56 @@ function predictedTrajectory = integrateEquationsOfMotion(parameters, constants,
     heading(1)                = state.heading;
     latitude(1)               = state.latitude;
     longitude(1)              = state.longitude;
-
-    bankAngleSign = state.bankSign;
+    headingError(1)           = state.headingError;
+    betaProfile(1)            = state.sideslipAngle;
 
     % Integrate equations of motion
     for i = 1:length(energy)-1
-        % if i == 4793
-        %     disp('hi')
-        % end
         % Compute velocity
         velocity = sqrt(2 * (1 / normGeocentricDistance(i) - energy(i)));
-
-        if parameters.debug && ~isreal(velocity)
-            warning("Imaginary velocity detected: \n Altitude: %.2d\n Energy: %.2d\n Range: %.2d\n Lift: %.2d\n Drag: %.2d", altitudeUnnormalized, energy(i), rangeToGo(i), lift, drag)
-            break;
-        end
 
         % Change states back to their dimensional forms
         velocityUnnormalized = velocity * constants.VELOCITY_SCALE;
         altitudeUnnormalized = (normGeocentricDistance(i) * constants.EARTH_RADIUS_EQ) - constants.EARTH_RADIUS_EQ;
 
-        % Compute non-dimensionalized lift and drag forces
-        [~, trimCD, trimCL] = calculateTrimAero(parameters, constants, velocityUnnormalized, altitudeUnnormalized);
+        % Compute non-dimensionalized lift, drag, and side forces
+        [trimCL, trimCD, trimCS] = calculateAeroCoefficients(parameters, alphaProfile(i), betaProfile(i));
         [rho, ~, ~] = atmosphereModel(altitudeUnnormalized);
 
         lift = 0.5 * rho * trimCL * velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
         drag = 0.5 * rho * trimCD * velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
-
-        bankAngleCommandTest = evaluatePathConstraints(altitudeUnnormalized, velocityUnnormalized, rho, lift, drag, velocity, energyStep, flightPathAngle(i), bankAngleProfile(i), constants);
-
-        % if parameters.debug && ~isreal(bankAngleCommand)
-        %     warning("Imaginary bank angle detected: \n Altitude: %.2d\n Energy: %.2d\n Range: %.2d\n Lift: %.2d\n Drag: %.2d", altitudeUnnormalized, energy(i), rangeToGo(i), lift, drag)
-        %     break;
-        % end
-
-        % if isreal(bankAngleCommand)
-            modifiedBankAngleProfile(i) = bankAngleCommandTest;
-        % end
+        sideForce = 0.5 * rho * trimCS * velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
 
         % Equations of motion
-        rangeToGoRate = -cos(flightPathAngle(i)) / (normGeocentricDistance(i) * drag);
-        normGeocentricDistanceRate = sin(flightPathAngle(i)) / drag;
-        flightPathAngleRate = (lift * cos(bankAngleProfile(i)) + (velocity^2 - 1/normGeocentricDistance(i)) * (cos(flightPathAngle(i)) / normGeocentricDistance(i))) / (drag * velocity^2);
-        headingRate = (lift * sin(bankAngleProfile(i))) / (drag * velocity^2 * cos(flightPathAngle(i))) + cos(flightPathAngle(i)) * sin(heading(i)) * tan(latitude(i)) / (normGeocentricDistance(i) * drag);
-        latitudeRate = (cos(flightPathAngle(i)) * cos(heading(i))) / (normGeocentricDistance(i) * drag);
-        longitudeRate = (cos(flightPathAngle(i)) * sin(heading(i))) / (normGeocentricDistance(i) * drag * cos(latitude(i)));
+        earthRotationRate                   = normalizeState(constants.EARTH_ROTATION_RATE, 'time', true, constants);
+        flightPathAngleRate                 = (lift * cos(constants.INITIAL_BANK_ANGLE) - sideForce * sin(constants.INITIAL_BANK_ANGLE) + (velocity^2 - 1 / normGeocentricDistance(i)) * cos(flightPathAngle(i)) / normGeocentricDistance(i) + 2 * earthRotationRate * velocity * cos(latitude(i)) * sin(heading(i)) + earthRotationRate^2 * normGeocentricDistance(i) * cos(latitude(i)) * (cos(flightPathAngle(i)) * cos(latitude(i)) + sin(flightPathAngle(i)) * cos(heading(i)) * sin(latitude(i)))) / velocity;
+        normGeocentricDistanceRate          = velocity * sin(flightPathAngle(i));
+        rangeToGoRate                       = -velocity * cos(flightPathAngle(i)) / normGeocentricDistance(i);
+        longitudeRate                       = (velocity * cos(flightPathAngle(i)) * sin(heading(i))) / (normGeocentricDistance(i) * cos(longitude(i)));
+        latitudeRate                        = (velocity * cos(flightPathAngle(i)) * cos(heading(i))) / normGeocentricDistance(i);
+        headingRate                         = 1 / velocity * ((lift * sin(constants.INITIAL_BANK_ANGLE)) / cos(flightPathAngle(i)) + (sideForce * sin(constants.INITIAL_BANK_ANGLE)) + (velocity^2 * cos(flightPathAngle(i)) * sin(heading(i)) * tan(latitude(i))) / normGeocentricDistance(i) - 2 * earthRotationRate * velocity * (tan(flightPathAngle(i)) * cos(heading(i)) * cos(latitude(i)) - sin(latitude(i))) + (earthRotationRate^2 * normGeocentricDistance(i) * sin(heading(i)) * sin(latitude(i)) * cos(latitude(i))) / cos(flightPathAngle(i)) );
         [~, terminalAzimuth] = distance('gc',latitude(i), longitude(i), deg2rad(constants.TARGET_LAT), deg2rad(constants.TARGET_LON), 'radians');
-        predictedTrajectory.headingError(i) = wrapToPi(terminalAzimuth - heading(i));
+        headingError(i+1) = wrapToPi(terminalAzimuth - heading(i));
 
-        % Update flight path angle rate using modified bank angle command
-        flightPathAngleRateTest = (lift * cos(bankAngleCommandTest) + (velocity^2 - 1/normGeocentricDistance(i)) * (cos(flightPathAngle(i)) / normGeocentricDistance(i))) / (drag * velocity^2);
+
 
         % Update predicted trajectory
-        stateTest.rangeToGo = rangeToGo(i);
-        stateTest.heading = heading(i);
-        stateTest.latitude = latitude(i);
-        stateTest.longitude = longitude(i);
-        rangeToGo(i+1) = rangeToGo(i) + rangeToGoRate * energyStep;
-        normGeocentricDistance(i+1) = normGeocentricDistance(i) + normGeocentricDistanceRate * energyStep;
-        flightPathAngle(i+1) = flightPathAngle(i) + flightPathAngleRate * energyStep;
-        flightPathAngleTest(i+1) = flightPathAngleTest(i) + flightPathAngleRateTest * energyStep;
-        crossrange(i+1) = calculateCrossrange(stateTest, constants);
-        heading(i+1) = heading(i) + headingRate * energyStep;
-        latitude(i+1) = latitude(i) + latitudeRate * energyStep;
-        longitude(i+1) = longitude(i) + longitudeRate * energyStep;
+        rangeToGo(i+1) = rangeToGo(i) + rangeToGoRate / (drag * velocity) * energyStep;
+        normGeocentricDistance(i+1) = normGeocentricDistance(i) + normGeocentricDistanceRate / (drag * velocity) * energyStep;
+        flightPathAngle(i+1) = flightPathAngle(i) + flightPathAngleRate / (drag * velocity) * energyStep;
+        heading(i+1) = heading(i) + headingRate / (drag * velocity) * energyStep;
+        latitude(i+1) = latitude(i) + latitudeRate / (drag * velocity) * energyStep;
+        longitude(i+1) = longitude(i) + longitudeRate / (drag * velocity) * energyStep;
 
-        deadband(i) = calculateDeadbandWidth(velocity,constants);
+        % Calculate the lateral logic
+        gamma = constants.VEHICLE_MASS / (0.5 * rho * velocityUnnormalized^2 * constants.FRONTAL_AREA);
+        maxSideForce = max(max(abs(parameters.CStable)));
+        headingGain = abs((maxSideForce / gamma) / (0.5 * maxSideForce));
+        headingRateGain = 2 * 1 * constants.VEHICLE_MASS * sqrt(headingGain / constants.VEHICLE_MASS);
 
-        if crossrange(i) > calculateDeadbandWidth(velocity,constants)
-            bankAngleSign = -1;
-        elseif crossrange(i) < -calculateDeadbandWidth(velocity,constants)
-            bankAngleSign = 1;
-        end
+        sideForceCommand = gamma * (headingGain * (terminalAzimuth - heading(i)) + headingRateGain * (0 - headingRate));
 
-        bankAngleProfile(i+1) = bankAngleSign * bankAngleProfile(i+1);
-
-        if parameters.debug && rangeToGo(i+1) <= 0.0
-            warning("Range is less than zero: \n Altitude: %.2d\n Energy: %.2d\n Range: %.2d\n Lift: %.2d\n Drag: %.2d", altitudeUnnormalized, energy(i), rangeToGo(i), lift, drag)
-            % break;
-        end
+        betaProfile(i+1) = findSideslipAngle(parameters,alphaProfile(i),sideForceCommand);
 
         % Debug
         liftHistory(i) = lift;
@@ -125,13 +97,10 @@ function predictedTrajectory = integrateEquationsOfMotion(parameters, constants,
         trimClHistory(i) = trimCL;
         trimCdHistory(i) = trimCD;
         heatingRate = constants.K_Q * sqrt(rho) * velocity^3.15 * 1e-4;
-        if heatingRate > 300
-            % disp("Just about everywhere, it's gonna be hot")
-        end
         heatingRateHistory(i) = heatingRate;
     end
 
-    % Debug plots
+     % Debug plots
     if parameters.debug
         figure('Name','Normalized Lift And Drag vs Range')
         hold on
@@ -197,6 +166,9 @@ function predictedTrajectory = integrateEquationsOfMotion(parameters, constants,
 
         figure('Name', 'Crossrange vs Range To Go')
         plot(rangeToGo, crossrange)
+        hold on
+        plot(rangeToGo, deadband, '--r')
+        plot(rangeToGo, -deadband, '--r')
         xlabel('Normalized Range to Go')
         ylabel('Crossrange')
 
@@ -215,13 +187,13 @@ function predictedTrajectory = integrateEquationsOfMotion(parameters, constants,
     predictedTrajectory.rangeToGo = rangeToGo;
     predictedTrajectory.normGeocentricDistance = normGeocentricDistance;
     predictedTrajectory.flightPathAngle = flightPathAngle;
-    % predictedTrajectory.bankAngleProfile = modifiedBankAngleProfile;
-    predictedTrajectory.bankAngleProfile = bankAngleProfile;
+    predictedTrajectory.alphaProfile = alphaProfile;
     predictedTrajectory.heading = heading;
     predictedTrajectory.latitude = latitude;
     predictedTrajectory.longitude = longitude;
     predictedTrajectory.velocity = velocityHistory;
     predictedTrajectory.crossrange = crossrange;
     predictedTrajectory.drag = dragHistory;
+    predictedTrajectory.beta = betaProfile;
 
 end

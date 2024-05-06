@@ -2,7 +2,8 @@
 function [state, derivatives] = updateState(state, commandedBankAngle, constants, parameters)
     velocity               = state.velocity;
     flightPathAngle        = state.flightPathAngle;
-    bankAngle              = state.bankAngle;
+    angleOfAttack          = state.angleOfAttack;
+    sideslipAngle          = state.sideslipAngle;
     latitude               = state.latitude;
     longitude              = state.longitude;
     heading                = state.heading;
@@ -15,7 +16,7 @@ function [state, derivatives] = updateState(state, commandedBankAngle, constants
 
     % Compute non-dimensionalized lift and drag forces
     [rho, ~, ~] = atmosphereModel(altitudeUnnormalized);
-    [~, trimCD, trimCL] = calculateTrimAero(parameters, constants, velocityUnnormalized, altitudeUnnormalized);
+    [trimCL, trimCD, trimCS] = calculateAeroCoefficients(parameters, angleOfAttack, sideslipAngle);
     lift = 0.5 * rho * trimCL * velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
     drag = 0.5 * rho * trimCD * velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
 

@@ -1,5 +1,5 @@
 % Update state variables function
-function [state, derivatives] = updateState(state, commandedBankAngle, constants, parameters)
+function [state, derivatives] = updateStateFull(state, commandedBankAngle, constants, parameters)
     velocity               = state.velocity;
     flightPathAngle        = state.flightPathAngle;
     bankAngle              = state.bankAngle;
@@ -11,6 +11,7 @@ function [state, derivatives] = updateState(state, commandedBankAngle, constants
     dt                     = normalizeState(parameters.dt, 'time', true, constants);
     velocityUnnormalized   = state.velocityUnnormalized;
     altitudeUnnormalized   = state.altitudeUnnormalized;
+    earthRotationRate      = normalizeState(constants.EARTH_ROTATION_RATE, 'time', true, constants);
     % crossrange             = state.crossrange;
 
     % Compute non-dimensionalized lift and drag forces
@@ -24,13 +25,13 @@ function [state, derivatives] = updateState(state, commandedBankAngle, constants
     state.headingError = terminalAzimuth - heading;
 
     % Equations of motion
-    derivatives.velocityDot               = -drag - sin(flightPathAngle) / normGeocentricDistance^2;
-    derivatives.flightPathAngleDot        = (lift * cos(commandedBankAngle) + (velocity^2 - 1 / normGeocentricDistance) * cos(flightPathAngle) / normGeocentricDistance) / velocity;
+    derivatives.velocityDot               = -drag - sin(flightPathAngle) / normGeocentricDistance^2 + earthRotationRate^2 * normGeocentricDistance * cos(latitude) * (sin(flightPathAngle) * cos(latitude) - cos(flightPathAngle) * sin(latitude) * cos(heading));
+    derivatives.flightPathAngleDot        = (lift * cos(commandedBankAngle) + (velocity^2 - 1 / normGeocentricDistance) * cos(flightPathAngle) / normGeocentricDistance + 2 * earthRotationRate * velocity * cos(latitude) * sin(heading) + earthRotationRate^2 * normGeocentricDistance * cos(latitude) * (cos(flightPathAngle) * cos(latitude) + sin(flightPathAngle) * cos(heading) * sin(latitude))) / velocity;
     derivatives.normGeocentricDistanceDot = velocity * sin(flightPathAngle);
     derivatives.rangeDot                  = -velocity * cos(flightPathAngle) / normGeocentricDistance;
     derivatives.lonDot                    = (velocity * cos(flightPathAngle) * sin(heading)) / (normGeocentricDistance * cos(longitude));
     derivatives.latDot                    = (velocity * cos(flightPathAngle) * cos(heading)) / normGeocentricDistance;
-    derivatives.headingDot                = 1 / velocity * ((lift * sin(bankAngle)) / cos(flightPathAngle) + (velocity^2) / normGeocentricDistance * cos(flightPathAngle) * sin(heading) * tan(latitude));
+    derivatives.headingDot                = 1 / velocity * ((lift * sin(bankAngle)) / cos(flightPathAngle) + (velocity^2 * cos(flightPathAngle) * sin(heading) * tan(latitude)) / normGeocentricDistance - 2 * earthRotationRate * velocity * (tan(flightPathAngle) * cos(heading) * cos(latitude) - sin(latitude)) + (earthRotationRate^2 * normGeocentricDistance * sin(heading) * sin(latitude) * cos(latitude)) / cos(flightPathAngle) );
     derivatives.bankAngleDot              = clampBankAngleRate(bankAngle, commandedBankAngle, constants, parameters.dt);
     % derivatives.crossrangeDot             = velocity * cos(flightPathAngle) * sin(state.headingError) / normGeocentricDistance;
 

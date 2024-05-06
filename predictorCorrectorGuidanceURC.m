@@ -1,64 +1,62 @@
 % Predictor-corrector guidance function
-function [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(parameters, constants, state, currentEnergy, finalEnergy, time)
+function [commandedAlpha, commandedBeta, predictedTrajectory] = predictorCorrectorGuidanceURC(parameters, constants, state, currentEnergy, finalEnergy, time)
 
     cntIterations = 0;
 
-    bankAnglePertubation = deg2rad(1e-3);
+    alphaPerturbation = deg2rad(1);
 
-    bankAngleHistory(cntIterations + 1) = abs(state.bankAngle);
+    alphaHistory(cntIterations + 1) = abs(state.angleOfAttack);
+    betaHistory(cntIterations + 1) = state.sideslipAngle;
     
-
     % Integrate equations of motion
-    predictedTrajectory = integrateEquationsOfMotionFull(parameters,...
+    predictedTrajectory = integrateEquationsOfMotionFullURC(parameters,...
                                                      constants,...
                                                      state,...
                                                      currentEnergy,...
                                                      finalEnergy,...
-                                                     bankAngleHistory(cntIterations + 1));
+                                                     alphaHistory(cntIterations + 1));
 
     % Evaluate terminal constraints
     rangeErrorHistory(cntIterations + 1) = evaluateTerminalConstraints(predictedTrajectory, parameters, constants);
     rangeErrorOld = 99999;
 
-    % Iteratively adjust bank angle profile
+    % Iteratively adjust alpha profile
     while abs(rangeErrorHistory(cntIterations + 1) - rangeErrorOld) > 1e-3...
        && cntIterations < 20
         if cntIterations == 0
             % For the first pass, we use the Newton-Rhapson method to calculate the modified
-            % bank angle. This is because we do not yet have the k-1 index necessary to use
+            % alpha. This is because we do not yet have the k-1 index necessary to use
             % the secant method.
-            bankAngleHistory(cntIterations + 2) = bankAngleHistory(cntIterations + 1) + bankAnglePertubation;
+            alphaHistory(cntIterations + 2) = alphaHistory(cntIterations + 1) + alphaPerturbation;
 
             % Re-integrate equations of motion
-
-            predictedTrajectory = integrateEquationsOfMotionFull(parameters,...
+            predictedTrajectory = integrateEquationsOfMotionFullURC(parameters,...
                                                              constants,...
                                                              state,...
                                                              currentEnergy,...
                                                              finalEnergy,...
-                                                             bankAngleHistory(cntIterations + 2));
+                                                             alphaHistory(cntIterations + 2));
 
             % Re-evaluate terminal constraint
             rangeErrorHistory(cntIterations + 2) = evaluateTerminalConstraints(predictedTrajectory, parameters, constants);
 
-            % Adjust bank angle profile based on terminal constraint
-            bankAngleHistory(cntIterations + 3) = modifyBankAngleProfile(rangeErrorHistory, bankAngleHistory, cntIterations);
+            % Adjust alpha profile based on terminal constraint
+            alphaHistory(cntIterations + 3) = modifyAlphaProfile(rangeErrorHistory, alphaHistory, cntIterations);
 
             cntIterations = cntIterations + 1;
         else
-
-            % Adjust bank angle profile based on terminal constraint
-            bankAngleHistory(cntIterations + 2) = modifyBankAngleProfile(rangeErrorHistory, bankAngleHistory, cntIterations);
+            % Adjust alpha profile based on terminal constraint
+            alphaHistory(cntIterations + 2) = modifyAlphaProfile(rangeErrorHistory, alphaHistory, cntIterations);
 
             cntIterations = cntIterations + 1;
 
             % Re-integrate equations of motion
-            predictedTrajectory = integrateEquationsOfMotionFull(parameters,...
+            predictedTrajectory = integrateEquationsOfMotionFullURC(parameters,...
                                                             constants,...
                                                             state,...
                                                             currentEnergy,...
                                                             finalEnergy,...
-                                                            bankAngleHistory(cntIterations + 1));
+                                                            alphaHistory(cntIterations + 1));
 
             % Re-evaluate terminal constraint
             rangeErrorHistory(cntIterations + 1) = evaluateTerminalConstraints(predictedTrajectory, parameters, constants);
@@ -66,7 +64,8 @@ function [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(
         end
     end
 
-    % Return commanded bank angle
+    % Return commanded alpha and beta
     idx = find(abs(rangeErrorHistory) == min(abs(rangeErrorHistory)));
-    commandedBankAngle = state.bankSign * abs(bankAngleHistory(idx));
+    commandedAlpha = alphaHistory(idx);
+    commandedBeta = predictedTrajectory.beta(2);
 end

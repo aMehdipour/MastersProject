@@ -205,7 +205,7 @@ for method = methods
     end
 
     % IMU gyro noise specifications
-    gammas = -5.5; %-5.5;%-40:20:40;
+    gammas = -20.5; %-5.5;%-40:20:40;
     gyroNoiseDensity = gammas;%[0, 1e-5, 1e-4, 1e-3];%linspace(0, 1e-3, 10);
     dataSave.gyroNoiseDensity = gyroNoiseDensity;
 

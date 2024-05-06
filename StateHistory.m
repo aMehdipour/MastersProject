@@ -162,7 +162,10 @@ classdef StateHistory < dynamicprops
             ylabel('Heading Error (rad)')
 
             figure('Name', 'Crossrange')
+            hold on
             plot(obj.time, obj.crossrange)
+            plot(obj.time, obj.deadbandWidth, '--r')
+            plot(obj.time, -obj.deadbandWidth, '--r')
             xlabel('Time (s)')
             ylabel('Crossrange (m)')
 
@@ -177,7 +180,7 @@ classdef StateHistory < dynamicprops
             % xlabel('Time (s)');
             % ylabel('Position (m)');
         end
-        function plotStateAndSave(obj)
+        function plotStateAndSave(obj,constants)
             baseDir = 'Plots';
             % Create a subdirectory name based on the current date and time
             % datetime object with a custom format
@@ -191,84 +194,84 @@ classdef StateHistory < dynamicprops
             plotFunctions = {@plotFlightPathAngle, @plotRangeToGo, @plotAltitude, ...
                              @plotVelocity, @plotNormGeocentricDistance, @plotNormalizedVelocity, ...
                              @plotLatitude, @plotLongitude, @plotHeading, @plotBankAngle, ...
-                             @plotLiftDrag, @plotHeatingRate, @plotVelocityAltitude, @plotECEFPosition};
+                             @plotLiftDrag, @plotHeatingRate, @plotVelocityAltitude, @plotECEFPosition, @plotCrossrange};
             plotNames = {'Flight Path Angle', 'Range to Go', 'Altitude', 'Velocity', ...
                          'Norm Geocentric Distance', 'Normalized Velocity', 'Latitude', ...
                          'Longitude', 'Heading', 'Bank Angle', 'Normalized Lift And Drag vs Range', ...
-                         'Heating Rate History', 'Velocity vs Altitude', 'ECEF Position Components'};
+                         'Heating Rate History', 'Velocity vs Altitude', 'Crossrange', 'ECEF Position Components'};
                          
             for i = 1:length(plotFunctions)
                 fig = figure('Visible', 'off');
-                plotFunctions{i}(obj);
+                plotFunctions{i}(obj,constants);
                 saveas(fig, fullfile(fullDir, [plotNames{i}, '.png']));
                 close(fig);
             end
         end
         
-        function plotFlightPathAngle(obj)
+        function plotFlightPathAngle(obj,constants)
             plot(obj.time, obj.flightPathAngle);
             title('Flight Path Angle vs. Time');
             xlabel('Time (s)');
             ylabel('Angle (rad)');
         end
         
-        function plotRangeToGo(obj)
+        function plotRangeToGo(obj,constants)
             plot(obj.time, obj.rangeToGoUnnormalized);
             title('Range to Go vs. Time');
             xlabel('Time (s)');
             ylabel('Range (m)');
         end
         
-        function plotAltitude(obj)
+        function plotAltitude(obj,constants)
             plot(obj.time, obj.altitudeUnnormalized);
             title('Altitude vs. Time');
             xlabel('Time (s)');
             ylabel('Altitude (m)');
         end
         
-        function plotVelocity(obj)
+        function plotVelocity(obj,constants)
             plot(obj.time, obj.velocityUnnormalized);
             title('Velocity vs. Time');
             xlabel('Time (s)');
             ylabel('Velocity (m/s)');
         end
         
-        function plotNormGeocentricDistance(obj)
+        function plotNormGeocentricDistance(obj,constants)
             plot(obj.time, obj.normGeocentricDistance);
             title('Norm Geocentric Distance vs. Time');
             xlabel('Time (s)');
             ylabel('Distance (m)');
         end
         
-        function plotNormalizedVelocity(obj)
+        function plotNormalizedVelocity(obj,constants)
             plot(obj.time, obj.velocity);
             title('Normalized Velocity vs. Time');
             xlabel('Time (s)');
             ylabel('Velocity');
         end
         
-        function plotLatitude(obj)
+        function plotLatitude(obj,constants)
             plot(obj.time, rad2deg(obj.latitude));
             title('Latitude vs. Time');
             xlabel('Time (s)');
             ylabel('Latitude (degrees)');
         end
         
-        function plotLongitude(obj)
+        function plotLongitude(obj,constants)
             plot(obj.time, rad2deg(obj.longitude));
             title('Longitude vs. Time');
             xlabel('Time (s)');
             ylabel('Longitude (degrees)');
         end
         
-        function plotHeading(obj)
+        function plotHeading(obj,constants)
             plot(obj.time, obj.heading);
             title('Heading vs. Time');
             xlabel('Time (s)');
             ylabel('Heading (rad)');
         end
         
-        function plotBankAngle(obj)
+        function plotBankAngle(obj,constants)
             hold on;
             plot(obj.time, obj.bankAngle);
             plot(obj.time, obj.commandedBankAngle, '--');
@@ -279,7 +282,7 @@ classdef StateHistory < dynamicprops
             legend('Bank Angle', 'Commanded Bank Angle');
         end
         
-        function plotLiftDrag(obj)
+        function plotLiftDrag(obj,constants)
             hold on;
             plot(obj.time, obj.drag);
             plot(obj.time, obj.lift);
@@ -291,18 +294,30 @@ classdef StateHistory < dynamicprops
             legend('Lift', 'Drag', 'Total Load');
         end
         
-        function plotHeatingRate(obj)
+        function plotHeatingRate(obj,constants)
             plot(obj.time(2:end), obj.heatingRate(2:end));
             title('Heating Rate History');
             xlabel('Normalized Range to Go');
             ylabel('Heating Rate ($W/cm^2$)');
         end
         
-        function plotVelocityAltitude(obj)
+        function plotVelocityAltitude(obj,constants)
             plot(obj.velocityUnnormalized, obj.altitudeUnnormalized./1e3);
             title('Velocity vs. Altitude');
             xlabel('Velocity (m/s)');
             ylabel('Altitude (km)');
+        end
+
+        function plotCrossrange(obj,constants)
+            hold on;
+            plot(obj.time, normalizeState(obj.crossrange,'length',false,constants));
+            plot(obj.time, normalizeState(obj.deadbandWidth,'length',false,constants), '--r');
+            plot(obj.time, -normalizeState(obj.deadbandWidth,'length',false,constants), '--r');
+            hold off;
+            title('Crossrange');
+            xlabel('Time (s)');
+            ylabel('Crossrange (m)');
+            legend('Crossrange', 'Deadband');
         end
         
         function plotECEFPosition(obj)

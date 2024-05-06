@@ -3,17 +3,17 @@ clear, close all
 % Constants
 constants.GRAVITY_NOMINAL       = 9.81;           % Gravitational acceleration (m/s^2)
 constants.EARTH_RADIUS_EQ       = 6378137;        % Earth's radius (m)
-constants.INITIAL_ALTITUDE      = 100000;         % Initial altitude (m)
-constants.INITIAL_VELOCITY      = 10100;          % Initial velocity (m/s)
+constants.INITIAL_ALTITUDE      = 122000;         % Initial altitude (m)
+constants.INITIAL_VELOCITY      = 10500;          % Initial velocity (m/s)
 constants.INITIAL_FPA           = -5.2 * pi/180;  % Initial flight path angle (rad)
-constants.INITIAL_LAT           = -5;           % EI latitude (deg)
+constants.INITIAL_LAT           = -4.7;           % EI latitude (deg)
 constants.INITIAL_LON           = -112;           % EI longitude (deg)
 constants.TARGET_ALTITUDE       = 31000;          % Target final altitude (m)
 constants.TARGET_VELOCITY       = 690;            % Target final velocity (m/s)
 constants.TARGET_LAT            = 40;             % Final latitude (deg)
 constants.TARGET_LON            = -112;           % Final longitude (deg)
 constants.VEHICLE_MASS          = 75.7;           % Vehicle mass (kg)
-constants.INITIAL_BANK_ANGLE    = deg2rad(45);
+constants.INITIAL_BANK_ANGLE    = deg2rad(0);
 constants.FINAL_BANK_ANGLE      = deg2rad(70);
 constants.REFERENCE_LENGTH      = 0.69; % reference length for moment calculation (m)
 constants.FRONTAL_AREA          = 1;%0.3849; % frontal area of ADEPT craft (m^2)
@@ -61,6 +61,10 @@ parameters.debug = false;
 % Calculate the trim aero parameters
 [trimAoA, trimCD, trimCL] = calculateTrimAero(parameters, constants, constants.INITIAL_VELOCITY, constants.INITIAL_ALTITUDE);
 
+constants.INITIAL_AOA = deg2rad(0);
+constants.INITIAL_SIDESLIP = deg2rad(0);
+constants.FINAL_ALPHA = deg2rad(20);
+
 fprintf('Trim AoA: %.2f degrees, Trim CL: %.4f, Trim CD: %.4f\n', trimAoA, trimCL, trimCD);
 
 % Non-dimensionalization factors
@@ -79,13 +83,13 @@ lastGuidanceCall = -0.5;
 
 % Initialize state variables
 [rho, ~, ~] = atmosphereModel(constants.INITIAL_ALTITUDE);
+[trimCL, trimCD, trimCS] = calculateAeroCoefficients(parameters, constants.INITIAL_AOA, constants.INITIAL_SIDESLIP);
 stateHistory = StateHistory();
 t = 0;
 r = (constants.INITIAL_ALTITUDE + constants.EARTH_RADIUS_EQ) / constants.LENGTH_SCALE;
 v = constants.INITIAL_VELOCITY / constants.VELOCITY_SCALE;
 s = calculateGCR(constants.INITIAL_LAT, constants.INITIAL_LON, constants.TARGET_LAT, constants.TARGET_LON, constants.EARTH_RADIUS_EQ, 'deg') / constants.LENGTH_SCALE;
 [~, terminalAzimuth] = distance('gc',constants.INITIAL_LAT, constants.INITIAL_LON, constants.TARGET_LAT, constants.TARGET_LON);
-terminalAzimuth              = terminalAzimuth;
 state.flightPathAngle        = constants.INITIAL_FPA;
 state.rangeToGo              = s;
 state.altitudeUnnormalized   = constants.INITIAL_ALTITUDE;
@@ -98,8 +102,11 @@ state.longitude              = deg2rad(constants.INITIAL_LON);
 state.heading                = deg2rad(terminalAzimuth);
 state.posECEF                = lla2ecef([state.latitude, state.longitude, state.altitudeUnnormalized], 'WGS84');
 state.bankAngle              = constants.INITIAL_BANK_ANGLE;
+state.angleOfAttack          = constants.INITIAL_AOA;
+state.sideslipAngle          = constants.INITIAL_SIDESLIP;
 state.lift                   = 0.5 * rho * trimCL * state.velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
 state.drag                   = 0.5 * rho * trimCD * state.velocityUnnormalized^2 * constants.FRONTAL_AREA / constants.VEHICLE_WEIGHT;
+state.sideForce              = 0;
 state.loadFactor             = sqrt(state.lift^2 + state.drag^2);
 state.heatingRate            = constants.K_Q * sqrt(rho) * state.velocity^3.15;
 state.headingError           = wrapToPi(terminalAzimuth - state.heading);
@@ -132,13 +139,14 @@ while state.velocityUnnormalized > constants.TARGET_VELOCITY
         elseif state.crossrange < -calculateDeadbandWidth(state.velocity, constants)
             state.bankSign = 1;
         end
-        [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(parameters,...
-                                                                               constants,...
-                                                                               state,...
-                                                                               currentEnergy,...
-                                                                               finalEnergy,...
-                                                                               t);
-        state.commandedBankAngle = commandedBankAngle;
+        [commandedAngleOfAttack, commandedSideslipAngle, predictedTrajectory] = predictorCorrectorGuidanceURC(parameters,...
+                                                                                constants,...
+                                                                                state,...
+                                                                                currentEnergy,...
+                                                                                finalEnergy,...
+                                                                                t);
+        state.commandedAngleOfAttack = commandedAngleOfAttack;
+        state.commandedSideslipAngle = commandedSideslipAngle;
         heatingRate = state.heatingRate;
         stateHistory = stateHistory.appendState(t, state);
         lastGuidanceCall = t;
@@ -146,7 +154,7 @@ while state.velocityUnnormalized > constants.TARGET_VELOCITY
     end
 
     % Update state variables
-    [state, derivatives] = updateStateFull(state, commandedBankAngle, constants, parameters);
+    [state, derivatives] = updateStateFullURC(state, commandedAngleOfAttack, commandedSideslipAngle, constants, parameters);
 
     % Increment time
 
