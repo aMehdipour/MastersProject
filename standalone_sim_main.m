@@ -3,16 +3,16 @@ clear, close all
 % Constants
 constants.GRAVITY_NOMINAL       = 9.81;           % Gravitational acceleration (m/s^2)
 constants.EARTH_RADIUS_EQ       = 6378137;        % Earth's radius (m)
-constants.INITIAL_ALTITUDE      = 100000;         % Initial altitude (m)
+constants.INITIAL_ALTITUDE      = 122000;         % Initial altitude (m)
 constants.INITIAL_VELOCITY      = 10100;          % Initial velocity (m/s)
 constants.INITIAL_FPA           = -5.2 * pi/180;  % Initial flight path angle (rad)
-constants.INITIAL_LAT           = -5;           % EI latitude (deg)
+constants.INITIAL_LAT           = -4.7;           % EI latitude (deg)
 constants.INITIAL_LON           = -112;           % EI longitude (deg)
 constants.TARGET_ALTITUDE       = 31000;          % Target final altitude (m)
 constants.TARGET_VELOCITY       = 690;            % Target final velocity (m/s)
 constants.TARGET_LAT            = 40;             % Final latitude (deg)
 constants.TARGET_LON            = -112;           % Final longitude (deg)
-constants.VEHICLE_MASS          = 75.7;           % Vehicle mass (kg)
+constants.VEHICLE_MASS          = 57;           % Vehicle mass (kg)
 constants.INITIAL_BANK_ANGLE    = deg2rad(45);
 constants.FINAL_BANK_ANGLE      = deg2rad(70);
 constants.REFERENCE_LENGTH      = 0.69; % reference length for moment calculation (m)
@@ -24,8 +24,8 @@ constants.MAX_LOAD_FACTOR       = 3;             % Max load factor (g)
 constants.K_Q                   = 9.4369e-5 * (sqrt(constants.GRAVITY_NOMINAL * constants.EARTH_RADIUS_EQ))^3.15;
 constants.BANK_ANGLE_RATE_LIMIT = deg2rad(10); % 10 degree bank angle rate limit
 constants.MAX_HEATING_RATE      = 2500000; % Maximum heating rate (w/m^2)
-constants.C1                    = 5.21e-3 * .5;
-constants.C0                    = 8.71e-5 * .5;
+constants.C1                    = 5.21e-3 * .25;
+constants.C0                    = 8.71e-5 * .25;
 constants.EARTH_ROTATION_RATE   = 7.2921151e-5;
 
 parameters.CLtable = [
@@ -120,9 +120,9 @@ while state.velocityUnnormalized > constants.TARGET_VELOCITY
     % Compute current energy
     currentEnergy = -1/2 * state.velocity^2 + 1 / state.normGeocentricDistance;
 
-    if currentEnergy >= finalEnergy
-        break;
-    end
+    % if currentEnergy >= finalEnergy
+    %     break;
+    % end
 
     % Predictor-corrector guidance
     if t == 0 || (t - lastGuidanceCall >= parameters.guidanceRate)

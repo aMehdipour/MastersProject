@@ -68,5 +68,5 @@ function [commandedBankAngle, predictedTrajectory] = predictorCorrectorGuidance(
 
     % Return commanded bank angle
     idx = find(abs(rangeErrorHistory) == min(abs(rangeErrorHistory)));
-    commandedBankAngle = state.bankSign * abs(bankAngleHistory(idx));
+    commandedBankAngle = state.bankSign * abs(bankAngleHistory(end));
 end
